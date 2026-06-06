@@ -1,10 +1,11 @@
-# Apache (XAMPP) — rewrite ไปที่ index.php
+# Apache — front controller (ทำงานได้ทั้ง /omnichannel และ /rt/allchat)
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /omnichannel/
-    # ให้ไฟล์จริง (เช่น api/erp/index.php, assets) ทำงานก่อน
+    # อย่า hardcode RewriteBase — ให้ใช้โฟลเดอร์ที่ติดตั้งจริง
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
     RewriteRule ^ index.php [L]
 </IfModule>
+
+Options -Indexes

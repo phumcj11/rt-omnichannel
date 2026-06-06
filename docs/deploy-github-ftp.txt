@@ -18,20 +18,38 @@ Remote folder: ./domains/kan-mkt.com/public_html/rt/allchat/
    - config/local.php
    - .github, .cursor, logs
 
-4) ครั้งแรกบนเซิร์ฟเวอร์ — สร้าง config/local.php เอง
-   คัดลอกจาก config/local.example.php แล้วแก้:
+4) ฐานข้อมูล production (สร้างแล้วบน hosting)
+   Database: idmplusc_rt_allchat
+   Host:     localhost
+   Username: idmplusc_ipee
+   Password: (จากหน้า hosting ตอนสร้าง DB)
+
+   Import ตาราง:
+   - เข้า phpMyAdmin บน hosting
+   - เลือก DB idmplusc_rt_allchat
+   - Import ไฟล์ database/schema.sql
+   - ถ้าเคย import schema เก่าแล้ว ให้รัน database/migrations/002_facebook_pages.sql เพิ่ม
+
+   หลัง import — เปลี่ยนรหัส admin ทันที (seed ใช้ Admin@100)
+
+5) ครั้งแรกบนเซิร์ฟเวอร์ — สร้าง config/local.php
+   คัดลอกจาก config/local.production.example.php แล้วใส่รหัส DB จริง:
 
    'base_path' => '/rt/allchat',
    'url'       => 'http://kan-mkt.com/rt/allchat',
    'env'       => 'production',
    'debug'     => false,
    'allow_dev_auto_login' => false,
-   'database'  => [ host, name, user, pass ของ hosting ],
+   'database'  => [
+     'host' => 'localhost',
+     'name' => 'idmplusc_rt_allchat',
+     'user' => 'idmplusc_ipee',
+     'pass' => '...',
+   ],
 
-5) ฐานข้อมูล production
-   - สร้าง DB บน hosting
-   - import database/schema.sql (+ migrations ถ้ามี)
-   - เปลี่ยนรหัส admin หลัง import
+   อัปโหลดไฟล์ไปที่:
+   domains/kan-mkt.com/public_html/rt/allchat/config/local.php
+   (FTP หรือ File Manager — ไฟล์นี้ไม่มากับ deploy)
 
 6) Facebook Webhook (production)
    Callback URL:
@@ -40,5 +58,23 @@ Remote folder: ./domains/kan-mkt.com/public_html/rt/allchat/
 
 7) ทดสอบหลัง deploy
    - เปิด http://kan-mkt.com/rt/allchat/
+   - เปิด http://kan-mkt.com/rt/allchat/index.php (ต้องไม่ 404)
    - login / inbox / settings
    - Actions ใน GitHub ต้องเขียว (success)
+
+8) แก้ 404 Not Found
+   A) ไฟล์ยังไม่ขึ้นเซิร์ฟเวอร์
+      - GitHub → Actions → ดู workflow ล่าสุด (ต้อง success)
+      - ใส่ Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+      - Re-run workflow หรือ push commit ใหม่
+      - เปิด FTP/File Manager ตรวจว่ามีไฟล์:
+        domains/kan-mkt.com/public_html/rt/allchat/index.php
+
+   B) มีไฟล์แต่ /login 404
+      - ต้องมี .htaccess ในโฟลเดอร์ allchat (deploy มาจาก repo)
+      - ต้องมี config/local.php บนเซิร์ฟเวอร์ (base_path = /rt/allchat)
+      - hosting ต้องเปิด mod_rewrite + AllowOverride
+
+   C) ถ้า FTP path ไม่ตรง
+      - ลองดู root ตอน login FTP ว่าอยู่โฟลเดอร์ไหน
+      - ปรับ server-dir ใน .github/workflows/deploy.yml ให้ชี้ถึง rt/allchat จริง
