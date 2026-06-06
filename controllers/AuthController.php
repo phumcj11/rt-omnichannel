@@ -43,7 +43,7 @@ final class AuthController
                 'okOut' => $okOut,
                 'next' => $this->safeNext($_GET['next'] ?? null),
                 'debug' => !empty($app['debug']),
-                'showLoginHint' => !empty($app['debug']) || (($app['env'] ?? '') === 'local'),
+                'showLoginHint' => true,
             ],
         ]);
     }
