@@ -170,6 +170,18 @@ $verifyTokenInDb = $verifyTokenInDb ?? false;
                     <p class="text-[11px] font-extrabold uppercase tracking-wider text-brand">ขั้นที่ 3</p>
                     <h4 class="mt-1 font-bold text-slate-900">ข้อมูลจาก Meta Developer</h4>
                     <p class="mt-1 text-xs text-slate-500"><a href="#howto-tokens" class="font-semibold text-brand hover:underline">วิธีหา Token / Secret / Page ID ในคู่มือ →</a></p>
+                    <div class="mt-3 rounded-lg border border-red-200 bg-red-50/90 p-4 text-xs text-red-950">
+                        <p class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ถ้าทดสอบแล้วขึ้น “Token ไม่ใช่ Page Access Token…”</p>
+                        <ol class="mt-2 list-decimal space-y-1.5 pl-4">
+                            <li>Meta → <strong>Use cases</strong> → <strong>Engage with customers on Messenger</strong> → <strong>Customize</strong></li>
+                            <li>เปิด <strong>API Setup</strong> (หรือ Messenger → Settings)</li>
+                            <li><strong>Add or Remove Pages</strong> → เลือก Page → <strong>Generate Token</strong></li>
+                            <li>คัดลอก <strong>EAA…</strong> → วางในช่อง Page Access Token ด้านล่าง (ต้องวางใหม่ ห้ามเว้นว่าง)</li>
+                            <li>ใส่ <strong>App ID</strong> + <strong>App Secret</strong> จาก App settings → Basic</li>
+                            <li>กด <strong>บันทึกการตั้งค่า</strong> ก่อน แล้วค่อยกดทดสอบ</li>
+                        </ol>
+                        <p class="mt-2 font-semibold text-amber-900">ห้ามใช้ Token จาก Graph API Explorer / Marketing API — ต้องเป็น Generate Token ของ Page ใน Messenger เท่านั้น</p>
+                    </div>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <label class="block text-xs font-bold text-slate-600 sm:col-span-2">
                             App ID

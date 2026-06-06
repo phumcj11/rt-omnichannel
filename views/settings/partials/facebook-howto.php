@@ -183,7 +183,10 @@ $isLocalhost = str_contains($webhookUrl, 'localhost') || str_contains($webhookUr
             <h4 class="font-bold text-slate-900"><i class="fa-solid fa-circle-question mr-1 text-slate-500"></i> แก้ปัญหาที่พบบ่อย</h4>
             <dl class="mt-4 space-y-4 text-sm">
                 <div>
-                    <dt class="font-bold text-slate-800">Meta บอก Verify webhook ไม่ผ่าน</dt>
+                    <dt class="font-bold text-slate-800">ทดสอบแล้วขึ้น “Token ไม่ใช่ Page Access Token ของ Messenger”</dt>
+                    <dd class="mt-1 text-slate-600">Token เก่ายังอยู่ในระบบ (ช่องว่าง = คงค่าเดิม) — สร้างใหม่ที่ Messenger → API Setup → Generate Token แล้ว<strong>วางทับ</strong>ในช่อง Page Access Token กดบันทึกก่อนทดสอบ</dd>
+                </div>
+                <div>
                     <dd class="mt-1 text-slate-600">ตรวจว่า Verify Token ใน Meta ตรงกับในระบบทุกตัวอักษร, URL เข้าถึงได้จากอินเทอร์เน็ต<?= $isLocalhost ? ' (ใช้ ngrok ไม่ใช่ localhost)' : '' ?>, และบันทึก Token ในระบบก่อนกด Verify</dd>
                 </div>
                 <div>
