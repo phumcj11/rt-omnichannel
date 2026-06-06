@@ -26,6 +26,7 @@ try {
             . ' sig256=' . (IntegrationConfigService::signatureHeaderFromServer(
                 IntegrationConfigService::mergeWebhookServer($_SERVER)
             ) !== '' ? 'yes' : 'no')
+            . ' hubkeys=' . implode(',', IntegrationConfigService::listHubHeaderKeys($_SERVER))
         );
         $server = IntegrationConfigService::mergeWebhookServer($_SERVER);
         $svc->handleWebhook($raw, $server);

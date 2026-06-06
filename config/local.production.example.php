@@ -30,5 +30,6 @@ return [
         'page_id' => '',
         'graph_version' => 'v21.0',
         'default_branch_id' => 1,
+        'webhook_trust_unsigned' => false,
     ],
 ];

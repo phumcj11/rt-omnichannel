@@ -21,6 +21,7 @@ final class IntegrationConfigService extends BaseService
         'page_id' => 'fb_page_id',
         'graph_version' => 'fb_graph_version',
         'default_branch_id' => 'fb_default_branch_id',
+        'webhook_trust_unsigned' => 'fb_webhook_trust_unsigned',
     ];
 
     /** @return array<string, mixed> */
@@ -33,7 +34,13 @@ final class IntegrationConfigService extends BaseService
         foreach (self::FB_DB_KEYS as $cfgKey => $dbKey) {
             $val = $db[$dbKey] ?? null;
             if ($val !== null && $val !== '') {
-                $cfg[$cfgKey] = $cfgKey === 'default_branch_id' ? (int) $val : $val;
+                if ($cfgKey === 'default_branch_id') {
+                    $cfg[$cfgKey] = (int) $val;
+                } elseif ($cfgKey === 'webhook_trust_unsigned') {
+                    $cfg[$cfgKey] = in_array(strtolower((string) $val), ['1', 'true', 'yes'], true);
+                } else {
+                    $cfg[$cfgKey] = $val;
+                }
             }
         }
 
@@ -73,6 +80,10 @@ final class IntegrationConfigService extends BaseService
         if (($input['app_id'] ?? '') !== '') {
             AppSetting::set('fb_app_id', trim($input['app_id']));
         }
+        AppSetting::set(
+            'fb_webhook_trust_unsigned',
+            !empty($input['webhook_trust_unsigned']) ? '1' : '0'
+        );
 
         $cfg = self::facebook();
         $pageId = trim((string) ($cfg['page_id'] ?? ''));
@@ -424,7 +435,54 @@ final class IntegrationConfigService extends BaseService
             }
         }
 
+        $needle = $algo === '1' ? 'SIGNATURE' : 'SIGNATURE_256';
+        foreach ($server as $key => $value) {
+            if (!is_string($value) || $value === '') {
+                continue;
+            }
+            $k = strtoupper(str_replace('-', '_', (string) $key));
+            if (str_contains($k, 'HUB') && str_contains($k, $needle)) {
+                return $value;
+            }
+        }
+
         return '';
+    }
+
+    public static function webhookTrustUnsigned(): bool
+    {
+        $cfg = self::facebook();
+
+        return !empty($cfg['webhook_trust_unsigned']);
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     * @return list<string>
+     */
+    public static function listHubHeaderKeys(array $server): array
+    {
+        $found = [];
+        foreach ($server as $key => $value) {
+            $k = strtoupper(str_replace('-', '_', (string) $key));
+            if (str_contains($k, 'HUB') || str_contains($k, 'SIGNATURE')) {
+                $found[] = (string) $key . '=' . (is_string($value) ? substr($value, 0, 12) . '…' : 'set');
+            }
+        }
+        if (function_exists('getallheaders')) {
+            /** @var array<string, string>|false $headers */
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    $n = strtolower((string) $name);
+                    if (str_contains($n, 'hub') || str_contains($n, 'signature')) {
+                        $found[] = 'hdr:' . $name;
+                    }
+                }
+            }
+        }
+
+        return $found;
     }
 
     /**

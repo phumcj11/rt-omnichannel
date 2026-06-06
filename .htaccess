@@ -1,6 +1,19 @@
 # Apache — front controller (ทำงานได้ทั้ง /omnichannel และ /rt/allchat)
+<IfModule mod_setenvif.c>
+    SetEnvIfNoCase X-Hub-Signature-256 "(.+)" HTTP_X_HUB_SIGNATURE_256=$1
+    SetEnvIfNoCase X-Hub-Signature "(.+)" HTTP_X_HUB_SIGNATURE=$1
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # Facebook webhook — บางโฮสต์ไม่ส่ง custom header เข้า PHP (ต้องอยู่ก่อน front controller)
+    RewriteCond %{REQUEST_URI} webhooks/facebook\.php$ [NC]
+    RewriteCond %{HTTP:X-Hub-Signature-256} .+
+    RewriteRule ^ - [E=HTTP_X_HUB_SIGNATURE_256:%{HTTP:X-Hub-Signature-256}]
+    RewriteCond %{REQUEST_URI} webhooks/facebook\.php$ [NC]
+    RewriteCond %{HTTP:X-Hub-Signature} .+
+    RewriteRule ^ - [E=HTTP_X_HUB_SIGNATURE:%{HTTP:X-Hub-Signature}]
+
     # อย่า hardcode RewriteBase — ให้ใช้โฟลเดอร์ที่ติดตั้งจริง
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d

@@ -421,6 +421,10 @@ final class FacebookMessengerService extends BaseService
             return 'ไม่มี App Secret — webhook ถูกปฏิเสธ (403)';
         }
         if (!IntegrationConfigService::hasWebhookSignatureHeader($server)) {
+            if (IntegrationConfigService::webhookTrustUnsigned()) {
+                return 'รับ webhook แบบ trust_unsigned (โฮสต์ block header — เปิดใน Channel Settings)';
+            }
+
             return 'ไม่พบ X-Hub-Signature header — โฮสต์อาจ block header นี้ (ModSecurity/proxy)';
         }
 
@@ -468,7 +472,17 @@ final class FacebookMessengerService extends BaseService
             return !empty(self::app()['debug']);
         }
 
-        return IntegrationConfigService::verifyWebhookSignature($rawBody, $server, $secret);
+        if (IntegrationConfigService::hasWebhookSignatureHeader($server)) {
+            return IntegrationConfigService::verifyWebhookSignature($rawBody, $server, $secret);
+        }
+
+        if (IntegrationConfigService::webhookTrustUnsigned()) {
+            WebhookTrace::log('WARN trust_unsigned=1 (hosting blocks signature header)');
+
+            return true;
+        }
+
+        return false;
     }
 
     /**

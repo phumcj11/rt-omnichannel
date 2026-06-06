@@ -47,5 +47,6 @@ return array_merge([
         'app_id' => getenv('FB_APP_ID') ?: '',
         'graph_version' => getenv('FB_GRAPH_VERSION') ?: 'v21.0',
         'default_branch_id' => (int) (getenv('FB_DEFAULT_BRANCH_ID') ?: 1),
+        'webhook_trust_unsigned' => filter_var(getenv('FB_WEBHOOK_TRUST_UNSIGNED') ?: 'false', FILTER_VALIDATE_BOOLEAN),
     ],
 ], $local);

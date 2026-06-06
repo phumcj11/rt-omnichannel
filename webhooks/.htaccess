@@ -1,4 +1,6 @@
-# Meta Facebook webhook — บาง shared hosting ไม่ส่ง X-Hub-Signature-* เข้า PHP โดยตรง
+# Meta Facebook webhook — shared hosting / LiteSpeed / ModSecurity
+CGIPassAuth On
+
 <IfModule mod_setenvif.c>
     SetEnvIfNoCase X-Hub-Signature-256 "(.+)" HTTP_X_HUB_SIGNATURE_256=$1
     SetEnvIfNoCase X-Hub-Signature "(.+)" HTTP_X_HUB_SIGNATURE=$1

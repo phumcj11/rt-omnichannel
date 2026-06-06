@@ -162,6 +162,7 @@ final class SettingsController
             'page_access_token' => (string) ($_POST['page_access_token'] ?? ''),
             'app_secret' => (string) ($_POST['app_secret'] ?? ''),
             'app_id' => (string) ($_POST['app_id'] ?? ''),
+            'webhook_trust_unsigned' => isset($_POST['webhook_trust_unsigned']) ? '1' : '0',
         ]);
 
         Redirect::to('/settings/channels?ok=saved');

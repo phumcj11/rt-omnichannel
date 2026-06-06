@@ -31,6 +31,7 @@ $hasFbSecret = trim((string) ($facebook['app_secret'] ?? '')) !== '';
 $verifyToken = (string) ($facebook['verify_token'] ?? '');
 $pageId = (string) ($facebook['page_id'] ?? '');
 $appId = (string) ($facebook['app_id'] ?? '');
+$trustUnsigned = !empty($facebook['webhook_trust_unsigned']);
 $canEdit = $canEdit ?? false;
 $fbPages = $fbPages ?? [];
 $fbPageCount = $fbPageCount ?? count($fbPages);
@@ -214,6 +215,21 @@ $webhookFileLog = $webhookFileLog ?? [];
                             <?php endif; ?>
                             <input type="password" name="app_secret" autocomplete="off" placeholder="<?= $hasFbSecret ? 'เว้นว่าง = คงค่าเดิม' : 'จาก App settings → Basic' ?>" class="ui-input mt-1.5 w-full px-3 py-2.5 text-sm font-mono" <?= $canEdit ? '' : 'readonly' ?> />
                         </label>
+                        <label class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/80 p-4 sm:col-span-2">
+                            <input
+                                type="checkbox"
+                                name="webhook_trust_unsigned"
+                                value="1"
+                                class="mt-1 h-4 w-4 rounded border-amber-300 text-brand focus:ring-brand"
+                                <?= $trustUnsigned ? 'checked' : '' ?>
+                                <?= $canEdit ? '' : 'disabled' ?>
+                            />
+                            <span class="text-xs text-amber-950">
+                                <strong>โหมดโฮสต์ block header (ไม่ปลอดภัย — ใช้ชั่วคราว)</strong><br>
+                                เปิดเมื่อ log ขึ้น “ไม่พบ X-Hub-Signature header” จาก ModSecurity/proxy ของ idmplus/kan-mkt
+                                — ระบบจะรับ webhook โดยไม่ตรวจลายเซ็น ให้ hosting whitelist header แล้วปิดตัวเลือกนี้
+                            </span>
+                        </label>
                     </div>
                 </div>
 
@@ -281,13 +297,11 @@ $webhookFileLog = $webhookFileLog ?? [];
                     <?php elseif ($missingHeader) : ?>
                         <p class="mt-2 text-sm text-amber-900">
                             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                            ได้รับ webhook แต่ PHP <strong>ไม่เห็น header ลายเซ็น</strong> จาก Meta
-                            — อัปเดตระบบแล้ว (webhooks/.htaccess) ลอง Meta Send to server อีกครั้งหลัง deploy
+                            Meta ยิงมาถึงแล้ว แต่โฮสต์<strong>ตัด header ลายเซ็น</strong> (ModSecurity)
                         </p>
-                        <p class="mt-2 text-xs text-amber-800">
-                            ถ้ายังไม่ผ่าน: ติดต่อ hosting (idmplus / kan-mkt) ให้ whitelist header
-                            <code class="rounded bg-white px-1">X-Hub-Signature-256</code> และ
-                            <code class="rounded bg-white px-1">X-Hub-Signature</code> — ModSecurity อาจ block
+                        <p class="mt-2 rounded-lg border border-amber-300 bg-amber-100 px-3 py-2 text-sm text-amber-950">
+                            <strong>แก้เร็ว:</strong> ติ๊ก <strong>「โหมดโฮสต์ block header」</strong> ด้านบน → บันทึก → Meta Send to server อีกครั้ง<br>
+                            <strong>แก้ถาวร:</strong> ติดต่อ hosting ให้ whitelist <code class="rounded bg-white px-1">X-Hub-Signature-256</code>
                         </p>
                     <?php else : ?>
                         <p class="mt-2 text-sm text-red-800">
