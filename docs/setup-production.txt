@@ -1,0 +1,38 @@
+Production deployment — 100 Baht Shop Omnichannel
+==================================================
+
+1) Environment (Apache / PHP-FPM + MySQL)
+   - PHP 8.1+ with extensions: pdo_mysql, json, mbstring, openssl
+   - HTTPS บังคับ (TLS certificate)
+   - ตั้ง DocumentRoot หรือ Alias ให้ชี้โฟลเดอร์โปรเจกต์ และให้ทุก request ไม่ใช่ไฟล์จริง rewrite ไป index.php
+
+2) config/local.php (สร้างบนเซิร์ฟเวอร์ — ห้าม commit)
+   - base_path: '' ถ้าแอปอยู่ที่ root ของโดเมน หรือ '/subdir' ถ้าใช้ path ย่อย
+   - allow_dev_auto_login => false  (บังคับ)
+   - Merge ค่าต่อไปนี้ผ่าน getenv บนเซิร์ฟเวอร์หรือใส่ใน local.php:
+     - APP_ENV=production
+     - APP_DEBUG=false
+     - APP_URL=https://your-domain.example
+     - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS (ผ่าน database ใน local หรือ getenv)
+
+3) Session / cookies
+   - บน HTTPS ตั้ง SESSION_SECURE=true (หรือปล่อยให้ระบบตรวจจาก HTTPS อัตโนมัติ)
+   - SESSION_NAME เปลี่ยนเป็นค่าที่ไม่เดาได้ (optional)
+   - SameSite ค่าเริ่ม Lax เหมาะกับเว็บแอปทั่วไป
+
+4) บัญชีผู้ใช้
+   - เข้าระบบด้วย email + password ในตาราง users (password_hash แบบ bcrypt)
+   - หลัง deploy ให้เปลี่ยนรหัสบัญชี seed / สร้างผู้ใช้ใหม่ทันที อย่าใช้รหัสจาก schema ใน production
+
+5) Apache .htaccess
+   - แก้ RewriteBase ให้ตรงกับ path จริงของโปรเจกต์ (หรือใช้ VirtualHost ที่ DocumentRoot = โฟลเดอร์โปรเจกต์แล้ว RewriteBase /)
+
+6) สิ่งที่ยังไม่ใช่ production-ready ในตัวโปรเจกต์
+   - Webhooks LINE/FB/WA ยังเป็น stub — ต้อง implement และเก็บ channel secrets บนเซิร์ฟเวอร์
+   - ERP sync / cron — ตรวจ logic ก่อนเปิดบน production
+   - สำรองข้อมูล MySQL เป็นระยะ
+
+7) ตรวจสอบหลัง deploy
+   - เปิด https://.../login — ต้องเห็นหน้า login ไม่ auto-login
+   - APP_DEBUG=false แล้วหน้า error ไม่แสดง stack trace ต่อผู้ใช้
+   - Cookie session มี HttpOnly และ (บน HTTPS) Secure

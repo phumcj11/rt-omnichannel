@@ -1,0 +1,25 @@
+Phase 1 — รันบน XAMPP (Windows)
+================================
+
+1) เริ่ม Apache + MySQL จาก XAMPP Control Panel
+
+2) สร้างฐานข้อมูล
+   - เปิด http://localhost/phpmyadmin
+   - สร้าง database ชื่อ: omnichannel_100baht
+   - Import ไฟล์: database/schema.sql
+
+3) ตั้งค่าเชื่อมต่อ (ถ้าจำเป็น)
+   - คัดลอก config/local.example.php เป็น config/local.php
+   - แก้ user/pass ของ MySQL ให้ตรงกับเครื่องคุณ
+
+4) URL แอป
+   - http://localhost/omnichannel/
+   - ถ้าใช้ Virtual Host ชี้ตรงที่โฟลเดอร์โปรเจกต์: ตั้ง base_path เป็น '' ใน config/local.php
+
+5) บัญชีทดสอบ (หลัง import schema)
+   - admin@100bahtshop.local / Admin@100
+   - agent@100bahtshop.local / Admin@100
+   (หน้า Login ยังไม่พร้อมใน Phase 1 — ใช้ทดสอบ DB เท่านั้น)
+
+6) mod_rewrite
+   - ถ้า 404 ทุกหน้า: เปิด httpd.conf ให้ AllowOverride All สำหรับ htdocs

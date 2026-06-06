@@ -1,0 +1,44 @@
+Facebook Page — เชื่อมกับ Omnichannel
+========================================
+
+1) สร้าง App ใน Meta for Developers
+   - https://developers.facebook.com/
+   - เพิ่ม Product: Messenger
+   - เชื่อม Facebook Page ของร้าน
+
+2) ตั้งค่าใน config/local.php (อย่า commit token จริง)
+   'facebook' => [
+     'page_access_token' => 'EAA...',     // Page Access Token (จาก Messenger settings)
+     'verify_token'      => 'ค่าที่คุณตั้งเอง',  // ใช้ตอน Verify webhook
+     'app_secret'        => '...',        // App settings > Basic
+     'page_id'           => '123456789',  // Page ID
+     'graph_version'     => 'v21.0',
+     'default_branch_id' => 1,
+   ],
+
+3) Webhook URL (ต้องเป็น HTTPS + เข้าถึงจากอินเทอร์เน็ต)
+   https://YOUR-DOMAIN/omnichannel/webhooks/facebook.php
+
+   บน localhost ใช้ tunnel เช่น ngrok:
+   ngrok http 80
+   → https://xxxx.ngrok-free.app/omnichannel/webhooks/facebook.php
+
+4) Subscribe fields ใน Meta
+   - messages
+   (optional ภายหลัง: messaging_postbacks, message_deliveries)
+
+5) Verify
+   - Meta จะ GET ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
+   - ระบบตอบ challenge ถ้า verify_token ตรงกับ config
+
+6) ทดสอบ
+   - ส่งข้อความจาก Messenger ไปที่ Page
+   - เปิด Unified Inbox → กรองช่องทาง Facebook
+   - ตอบจากแชทในระบบ → ส่งออกไป Messenger (ต้องมี page_access_token)
+
+7) ความปลอดภัย
+   - production: ตั้ง app_secret เสมอ (ตรวจ X-Hub-Signature-256)
+   - debug=true ชั่วคราวอนุญาต webhook โดยไม่มี secret (dev เท่านั้น)
+
+8) Log
+   - ดู payload ใน table webhook_logs (provider = facebook)

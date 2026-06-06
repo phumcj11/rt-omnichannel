@@ -1,0 +1,28 @@
+100 Baht Shop — Setup (XAMPP + Webhook / ngrok)
+===============================================
+
+1) ฐานข้อมูล
+   - สร้าง DB แล้ว import: database/schema.sql
+   - คัดลอก config/local.example.php → config/local.php
+
+2) Apache
+   - เปิด mod_rewrite
+   - โปรเจกต์อยู่ที่ http://localhost/omnichannel/
+
+3) API ERP (stub Phase 1)
+   - เปิดโดยตรง: http://localhost/omnichannel/api/erp/index.php
+   - health: .../api/erp/index.php (JSON status)
+
+4) Cron (Windows Task Scheduler / Linux crontab)
+   - ทุก 1 นาที: php C:\xampp\htdocs\omnichannel\cron\sla_check.php
+   - ERP sync ตามต้องการ: php ...\cron\erp_sync.php
+
+5) Webhook ทดสอบ local (HTTPS)
+   - ติดตั้ง ngrok: ngrok http 80
+   - ตั้ง public URL ใน app_settings.public_base_url (หรือ env) เป็น https://xxxx.ngrok.io/omnichannel
+   - LINE / Meta ต้องการ HTTPS — ใช้ ngrok หรือ staging server
+
+6) Deploy production
+   - ตั้ง SSL ที่ domain จริง
+   - ตั้ง APP_ENV=production และปิด APP_DEBUG
+   - หมุนรหัส webhook secret / DB password

@@ -1,0 +1,35 @@
+# --- Secrets & local config ---
+config/local.php
+.env
+.env.*
+!.env.example
+
+# --- Logs & cache ---
+*.log
+storage/logs/*.log
+!storage/logs/.gitkeep
+cache/
+tmp/
+temp/
+
+# --- OS & editors ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Cursor / local tooling ---
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+
+# --- Archives & backups ---
+*.zip
+*.tar
+*.tar.gz
+*.sql.bak
+backup/

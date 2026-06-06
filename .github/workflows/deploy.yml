@@ -1,0 +1,39 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: FTP Deploy
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+
+          port: 2002
+          protocol: ftps
+
+          local-dir: ./
+          server-dir: ./domains/kan-mkt.com/public_html/rt/allchat/
+          exclude: |
+            **/.git*
+            **/.git/**
+            **/.cursor/**
+            **/node_modules/**
+            **/.github/**
+            **/.idea/**
+            **/.vscode/**
+            config/local.php
+            storage/logs/*.log
+            **/*.log
+            **/.env
+            **/.env.*

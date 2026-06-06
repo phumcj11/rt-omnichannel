@@ -1,0 +1,44 @@
+GitHub + Auto FTP Deploy — rt-omnichannel
+==========================================
+
+Repo: https://github.com/phumcj11/rt-omnichannel
+Production URL: http://kan-mkt.com/rt/allchat
+Remote folder: ./domains/kan-mkt.com/public_html/rt/allchat/
+
+1) GitHub Secrets (Settings → Secrets and variables → Actions)
+   FTP_SERVER   = ftp.idm-plus.com
+   FTP_USERNAME = idmplusc
+   FTP_PASSWORD = (รหัส FTP จริง — อย่า commit)
+
+2) Deploy อัตโนมัติ
+   - push ไป branch main → GitHub Actions รัน deploy.yml
+   - ดูสถานะที่แท็บ Actions ใน repo
+
+3) ไฟล์ที่ไม่ถูก deploy (exclude)
+   - config/local.php
+   - .github, .cursor, logs
+
+4) ครั้งแรกบนเซิร์ฟเวอร์ — สร้าง config/local.php เอง
+   คัดลอกจาก config/local.example.php แล้วแก้:
+
+   'base_path' => '/rt/allchat',
+   'url'       => 'http://kan-mkt.com/rt/allchat',
+   'env'       => 'production',
+   'debug'     => false,
+   'allow_dev_auto_login' => false,
+   'database'  => [ host, name, user, pass ของ hosting ],
+
+5) ฐานข้อมูล production
+   - สร้าง DB บน hosting
+   - import database/schema.sql (+ migrations ถ้ามี)
+   - เปลี่ยนรหัส admin หลัง import
+
+6) Facebook Webhook (production)
+   Callback URL:
+   http://kan-mkt.com/rt/allchat/webhooks/facebook.php
+   (แนะนำ HTTPS เมื่อมี SSL)
+
+7) ทดสอบหลัง deploy
+   - เปิด http://kan-mkt.com/rt/allchat/
+   - login / inbox / settings
+   - Actions ใน GitHub ต้องเขียว (success)

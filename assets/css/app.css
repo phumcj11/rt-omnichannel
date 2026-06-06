@@ -1,0 +1,128 @@
+/**
+ * Premium SaaS shell — spacing, surface, subtle motion (pairs with Tailwind CDN)
+ */
+:root {
+    --app-bg: #f4f6f9;
+    --app-surface: #ffffff;
+    --app-border: rgba(15, 23, 42, 0.08);
+    --app-border-strong: rgba(15, 23, 42, 0.12);
+    --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --app-shadow-md: 0 4px 16px -4px rgba(15, 23, 42, 0.08), 0 8px 32px -12px rgba(15, 23, 42, 0.06);
+    --app-shadow-lg: 0 12px 40px -16px rgba(15, 23, 42, 0.12);
+    --app-ring-brand: rgba(220, 38, 38, 0.12);
+    --app-radius: 1rem;
+    --app-radius-lg: 1.25rem;
+}
+
+/* Sidebar nav — ให้คลิกได้เสมอ */
+.sidebar-shell nav a {
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+}
+
+body.app-shell {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--app-bg);
+    background-image:
+        radial-gradient(1200px 600px at 10% -10%, rgba(220, 38, 38, 0.06), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(59, 130, 246, 0.05), transparent 50%);
+    background-attachment: fixed;
+}
+
+/* Subtle grid like Zendesk / Intercom product surfaces */
+.app-surface-dots {
+    background-image: radial-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Form controls — unified premium feel */
+.ui-input,
+.ui-select {
+    border-radius: 0.75rem;
+    border: 1px solid var(--app-border-strong);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: var(--app-shadow-sm);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.ui-input:hover,
+.ui-select:hover {
+    border-color: rgba(15, 23, 42, 0.16);
+}
+
+.ui-input:focus,
+.ui-select:focus {
+    outline: none;
+    border-color: rgba(220, 38, 38, 0.45);
+    box-shadow: 0 0 0 3px var(--app-ring-brand), var(--app-shadow-sm);
+}
+
+/* Scrollbars — clean */
+.scrollbar-premium {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+}
+
+.scrollbar-premium::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.scrollbar-premium::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.16);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+
+.scrollbar-premium::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.26);
+    background-clip: padding-box;
+}
+
+/* Inbox row — hover lift */
+.inbox-row a {
+    transition:
+        transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.2s ease,
+        border-color 0.2s ease;
+}
+
+.inbox-row a:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--app-shadow-md);
+}
+
+/* Chat composer dock */
+.composer-dock {
+    box-shadow:
+        0 -12px 40px -24px rgba(15, 23, 42, 0.2),
+        0 -1px 0 rgba(15, 23, 42, 0.06);
+}
+
+/* Message thread subtle fade at top */
+.msg-thread-fade {
+    mask-image: linear-gradient(to bottom, transparent, black 12px);
+}
+
+/* Focus — accessible brand */
+:focus-visible {
+    outline: 2px solid #dc2626;
+    outline-offset: 2px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+
+    .inbox-row a:hover {
+        transform: none;
+    }
+}
