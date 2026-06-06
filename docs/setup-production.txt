@@ -21,8 +21,12 @@ Production deployment — 100 Baht Shop Omnichannel
    - SameSite ค่าเริ่ม Lax เหมาะกับเว็บแอปทั่วไป
 
 4) บัญชีผู้ใช้
-   - เข้าระบบด้วย email + password ในตาราง users (password_hash แบบ bcrypt)
-   - หลัง deploy ให้เปลี่ยนรหัสบัญชี seed / สร้างผู้ใช้ใหม่ทันที อย่าใช้รหัสจาก schema ใน production
+   - Login: admin@100bahtshop.local / admin123 (เปลี่ยนหลัง go-live)
+   - ถ้า login ไม่ได้ (hash ใน DB เสีย):
+     a) phpMyAdmin → รัน database/migrations/003_admin_password_admin123.sql
+     b) หรือใน config/local.php ใส่ setup_key ชั่วคราว แล้วเปิด
+        https://YOUR-DOMAIN/rt/allchat/scripts/reset-admin-password.php?key=SETUP_KEY
+        จากนั้นลบ setup_key ออก
 
 5) Apache .htaccess
    - แก้ RewriteBase ให้ตรงกับ path จริงของโปรเจกต์ (หรือใช้ VirtualHost ที่ DocumentRoot = โฟลเดอร์โปรเจกต์แล้ว RewriteBase /)

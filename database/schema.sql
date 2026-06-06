@@ -505,9 +505,10 @@ INSERT INTO `channels` (`id`, `name`, `code`, `icon`, `is_active`, `config_json`
 (6, 'TikTok (Lead / Ads)', 'tiktok_lead', 'tiktok', 1, NULL);
 
 -- Password (dev): admin123 — เปลี่ยนหลัง go-live
+-- Hash สร้างด้วย: php -r "echo password_hash('admin123', PASSWORD_DEFAULT);"
 INSERT INTO `users` (`id`, `branch_id`, `name`, `email`, `password_hash`, `role`, `is_active`) VALUES
-(1, 1, 'System Admin', 'admin@100bahtshop.local', '$2y$10$FDGyUq/0jxdZ7g5avPbbBOVUi9BlLON3Taz2.oZJwmQB4bWyeMrZC', 'admin', 1),
-(2, 1, 'Sales Agent', 'agent@100bahtshop.local', '$2y$10$FDGyUq/0jxdZ7g5avPbbBOVUi9BlLON3Taz2.oZJwmQB4bWyeMrZC', 'agent', 1);
+(1, 1, 'System Admin', 'admin@100bahtshop.local', '$2y$10$a31hiJJxqV/6BEIMWAEB8.WObqhHKvBjx1cBSuoO3zebPoaZb5iJ2', 'admin', 1),
+(2, 1, 'Sales Agent', 'agent@100bahtshop.local', '$2y$10$a31hiJJxqV/6BEIMWAEB8.WObqhHKvBjx1cBSuoO3zebPoaZb5iJ2', 'agent', 1);
 
 INSERT INTO `pipeline_stages` (`id`, `name`, `slug`, `sort_order`, `is_won`, `is_lost`) VALUES
 (1, 'New', 'new_inquiry', 10, 0, 0),

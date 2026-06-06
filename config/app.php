@@ -38,6 +38,8 @@ return array_merge([
     'session_samesite' => getenv('SESSION_SAMESITE') !== false && getenv('SESSION_SAMESITE') !== ''
         ? (string) getenv('SESSION_SAMESITE')
         : 'Lax',
+    /** คีย์ครั้งเดียวสำหรับ scripts/reset-admin-password.php — ลบหลังใช้ */
+    'setup_key' => getenv('APP_SETUP_KEY') ?: '',
     /** Facebook Messenger — override ใน config/local.php */
     'facebook' => [
         'page_access_token' => getenv('FB_PAGE_ACCESS_TOKEN') ?: '',

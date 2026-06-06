@@ -1,0 +1,4 @@
+# อนุญาตเฉพาะ reset-admin-password.php (ใช้ครั้งเดียวแล้วลบ)
+<FilesMatch "^(?!reset-admin-password\.php$).+\.php$">
+    Require all denied
+</FilesMatch>

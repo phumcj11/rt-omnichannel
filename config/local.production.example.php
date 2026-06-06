@@ -16,6 +16,7 @@ return [
     'env' => 'production',
     'debug' => false,
     'allow_dev_auto_login' => false,
+    'setup_key' => '',
     'database' => [
         'host' => 'localhost',
         'port' => 3306,

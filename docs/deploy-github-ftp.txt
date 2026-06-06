@@ -30,7 +30,8 @@ Remote folder: ./domains/kan-mkt.com/public_html/rt/allchat/
    - Import ไฟล์ database/schema.sql
    - ถ้าเคย import schema เก่าแล้ว ให้รัน database/migrations/002_facebook_pages.sql เพิ่ม
 
-   หลัง import — เปลี่ยนรหัส admin ทันที (seed ใช้ admin123)
+   หลัง import — login: admin@100bahtshop.local / admin123
+   ถ้า login ไม่ได้: รัน scripts/reset-admin-password.php (ดู docs/setup-production.txt)
 
 5) ครั้งแรกบนเซิร์ฟเวอร์ — สร้าง config/local.php
    คัดลอกจาก config/local.production.example.php แล้วใส่รหัส DB จริง:

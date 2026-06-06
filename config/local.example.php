@@ -14,6 +14,8 @@ return [
     'env' => 'local',
     /** false = แสดงหน้า login ก่อน (แนะนำ) · true = ข้าม login ตอนพัฒนา */
     'allow_dev_auto_login' => false,
+    /** ใส่ค่าชั่วคราวเพื่อรัน reset รหัส admin แล้วลบทิ้ง */
+    'setup_key' => '',
     'database' => [
         'host' => '127.0.0.1',
         'port' => 3306,
