@@ -28,7 +28,6 @@
         copyBtn.addEventListener('click', function () {
             webhookInput.select();
             webhookInput.setSelectionRange(0, 99999);
-            var ok = false;
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(webhookInput.value).then(function () {
                     copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> คัดลอกแล้ว';
@@ -38,9 +37,10 @@
                 });
                 return;
             }
+            var ok = false;
             try {
                 ok = document.execCommand('copy');
-            } catch (e) {
+            } catch (err) {
                 ok = false;
             }
             copyBtn.textContent = ok ? 'คัดลอกแล้ว' : 'คัดลอกไม่ได้';
@@ -58,104 +58,125 @@
         });
     }
 
+    var statusBox = document.getElementById('fb-action-status');
+
+    function showStatus(kind, message) {
+        if (!statusBox) {
+            window.alert(message);
+            return;
+        }
+        statusBox.classList.remove('hidden');
+        statusBox.textContent = message;
+        if (kind === 'ok') {
+            statusBox.className =
+                'mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900';
+        } else if (kind === 'err') {
+            statusBox.className =
+                'mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-900';
+        } else {
+            statusBox.className =
+                'mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700';
+        }
+        statusBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function postJson(url, csrf) {
+        var body = new URLSearchParams();
+        body.set('_csrf', csrf);
+
+        return fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            credentials: 'same-origin',
+            body: body.toString(),
+        }).then(function (r) {
+            return r.text().then(function (text) {
+                try {
+                    return JSON.parse(text);
+                } catch (err) {
+                    throw new Error(
+                        text && text.indexOf('<') === 0
+                            ? 'เซิร์ฟเวอร์ตอบ HTML (อาจ session หมดอายุ — ลอง refresh แล้ว login ใหม่)'
+                            : text.slice(0, 160) || 'HTTP ' + r.status
+                    );
+                }
+            });
+        });
+    }
+
+    function bindTestButton(btn, options) {
+        if (!btn) {
+            return;
+        }
+        var label = btn.innerHTML;
+
+        btn.addEventListener('click', function () {
+            var url = btn.getAttribute('data-url');
+            var csrf = window.__SETTINGS_CSRF__ || '';
+            if (!url) {
+                showStatus('err', 'ไม่พบ URL สำหรับทดสอบ — ลอง refresh หน้า');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = options.loadingHtml;
+            showStatus('loading', options.loadingText);
+
+            postJson(url, csrf)
+                .then(function (data) {
+                    btn.disabled = false;
+                    btn.innerHTML = label;
+                    if (data && data.ok) {
+                        showStatus('ok', options.successText(data));
+                        if (typeof options.onSuccess === 'function') {
+                            options.onSuccess(data);
+                        }
+                    } else {
+                        showStatus('err', options.failPrefix + ((data && data.error) || 'unknown'));
+                        if (typeof options.onFail === 'function') {
+                            options.onFail(data);
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    btn.disabled = false;
+                    btn.innerHTML = label;
+                    showStatus('err', 'เรียก API ไม่สำเร็จ: ' + (err && err.message ? err.message : ''));
+                });
+        });
+    }
+
     var testBtn = document.getElementById('btn-test-fb');
-    var testResult = document.getElementById('fb-test-result');
     var testBadge = document.getElementById('fb-test-badge');
-    if (testBtn && testResult) {
-        testBtn.addEventListener('click', function () {
-            var url = testBtn.getAttribute('data-url');
-            var csrf = window.__SETTINGS_CSRF__ || '';
-            if (!url) {
-                return;
+    bindTestButton(testBtn, {
+        loadingHtml: '<i class="fa-solid fa-spinner fa-spin"></i> กำลังทดสอบ…',
+        loadingText: 'กำลังทดสอบ Page Access Token…',
+        successText: function (data) {
+            return 'เชื่อมต่อสำเร็จ — Page: ' + (data.page_name || '') + ' (ID ' + (data.page_id || '') + ')';
+        },
+        failPrefix: 'ทดสอบ Page Token ไม่สำเร็จ: ',
+        onSuccess: function () {
+            if (testBadge) {
+                testBadge.className =
+                    'inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 ring-1 ring-emerald-100';
+                testBadge.textContent = '✓ เชื่อมต่อ OK';
             }
-            testBtn.disabled = true;
-            testResult.classList.remove('hidden');
-            testResult.className = 'text-sm font-medium text-slate-600';
-            testResult.textContent = 'กำลังทดสอบ…';
-
-            var body = new URLSearchParams();
-            body.set('_csrf', csrf);
-
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                credentials: 'same-origin',
-                body: body.toString(),
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    testBtn.disabled = false;
-                    if (data && data.ok) {
-                        testResult.className = 'text-sm font-medium text-emerald-700';
-                        testResult.textContent =
-                            'เชื่อมต่อสำเร็จ — Page: ' + (data.page_name || '') + ' (ID ' + (data.page_id || '') + ')';
-                        if (testBadge) {
-                            testBadge.className =
-                                'inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 ring-1 ring-emerald-100';
-                            testBadge.textContent = '✓ เชื่อมต่อ OK';
-                        }
-                    } else {
-                        testResult.className = 'text-sm font-medium text-red-700';
-                        testResult.textContent = 'ไม่สำเร็จ: ' + ((data && data.error) || 'unknown');
-                        if (testBadge) {
-                            testBadge.className =
-                                'inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-red-800 ring-1 ring-red-100';
-                            testBadge.textContent = '✗ ทดสอบไม่ผ่าน';
-                        }
-                    }
-                })
-                .catch(function () {
-                    testBtn.disabled = false;
-                    testResult.className = 'text-sm font-medium text-red-700';
-                    testResult.textContent = 'เรียก API ไม่สำเร็จ';
-                });
-        });
-    }
-
-    var appTestBtn = document.getElementById('btn-test-app');
-    var appTestResult = document.getElementById('fb-app-test-result');
-    if (appTestBtn && appTestResult) {
-        appTestBtn.addEventListener('click', function () {
-            var url = appTestBtn.getAttribute('data-url');
-            var csrf = window.__SETTINGS_CSRF__ || '';
-            if (!url) {
-                return;
+        },
+        onFail: function () {
+            if (testBadge) {
+                testBadge.className =
+                    'inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-red-800 ring-1 ring-red-100';
+                testBadge.textContent = '✗ ทดสอบไม่ผ่าน';
             }
-            appTestBtn.disabled = true;
-            appTestResult.classList.remove('hidden');
-            appTestResult.className = 'text-sm font-medium text-slate-600';
-            appTestResult.textContent = 'กำลังตรวจ App ID/Secret…';
+        },
+    });
 
-            var body = new URLSearchParams();
-            body.set('_csrf', csrf);
-
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                credentials: 'same-origin',
-                body: body.toString(),
-            })
-                .then(function (r) {
-                    return r.json();
-                })
-                .then(function (data) {
-                    appTestBtn.disabled = false;
-                    if (data && data.ok) {
-                        appTestResult.className = 'text-sm font-medium text-emerald-700';
-                        appTestResult.textContent =
-                            'App ID/Secret ถูกต้อง — ลอง Meta Send to server อีกครั้ง (Subscribe messages ด้วย)';
-                    } else {
-                        appTestResult.className = 'text-sm font-medium text-red-700';
-                        appTestResult.textContent = 'ไม่ผ่าน: ' + ((data && data.error) || 'unknown');
-                    }
-                })
-                .catch(function () {
-                    appTestBtn.disabled = false;
-                    appTestResult.className = 'text-sm font-medium text-red-700';
-                    appTestResult.textContent = 'เรียก API ไม่สำเร็จ';
-                });
-        });
-    }
+    bindTestButton(document.getElementById('btn-test-app'), {
+        loadingHtml: '<i class="fa-solid fa-spinner fa-spin"></i> กำลังตรวจ…',
+        loadingText: 'กำลังตรวจ App ID / App Secret กับ Meta…',
+        successText: function () {
+            return 'App ID/Secret ถูกต้อง — ลอง Meta Send to server อีกครั้ง (Subscribe ฟิลด์ messages ด้วย)';
+        },
+        failPrefix: 'App ID/Secret ไม่ผ่าน: ',
+    });
 })();

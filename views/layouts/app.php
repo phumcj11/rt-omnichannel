@@ -239,9 +239,18 @@ $mainClass = $mainFlush
         </div>
     </div>
 
-    <script src="<?= htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8') ?>/assets/js/app.js"></script>
+    <?php
+    $projectRoot = dirname(__DIR__, 2);
+    $assetUrl = static function (string $src) use ($assetBase, $projectRoot): string {
+        $path = $projectRoot . str_replace('/', DIRECTORY_SEPARATOR, $src);
+        $ver = is_readable($path) ? (string) filemtime($path) : (string) time();
+
+        return htmlspecialchars($assetBase . $src . '?v=' . $ver, ENT_QUOTES, 'UTF-8');
+    };
+    ?>
+    <script src="<?= $assetUrl('/assets/js/app.js') ?>"></script>
     <?php foreach ($extraScripts as $src) : ?>
-        <script src="<?= htmlspecialchars($assetBase, ENT_QUOTES, 'UTF-8') . htmlspecialchars($src, ENT_QUOTES, 'UTF-8') ?>"></script>
+        <script src="<?= $assetUrl((string) $src) ?>"></script>
     <?php endforeach; ?>
 </body>
 </html>

@@ -226,8 +226,12 @@ $webhookLogs = $webhookLogs ?? [];
                         <p class="text-sm text-slate-500"><i class="fa-solid fa-lock mr-1"></i> ต้อง login เป็น Admin หรือ Manager จึงจะแก้ไขได้</p>
                     <?php endif; ?>
                 </div>
-                <p id="fb-test-result" class="hidden text-sm font-medium"></p>
-                <p id="fb-app-test-result" class="hidden text-sm font-medium"></p>
+                <div
+                    id="fb-action-status"
+                    class="mt-4 hidden rounded-xl border px-4 py-3 text-sm font-medium"
+                    role="status"
+                    aria-live="polite"
+                ></div>
             </form>
 
             <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-5">
