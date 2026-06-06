@@ -514,11 +514,21 @@ final class IntegrationConfigService extends BaseService
             'log_id' => (int) $row['id'],
             'created_at' => (string) ($row['created_at'] ?? ''),
             'stored_signature_ok' => !empty($row['signature_ok']),
-            'has_signature_header' => self::hasWebhookSignatureHeader($headers),
+            'has_signature_header' => false,
             'current_secret_ok' => false,
             'failure_reason' => '',
             'log_error' => $row['error_message'] ?? null,
         ];
+
+        if (!empty($row['signature_ok'])) {
+            $result['has_signature_header'] = true;
+            $result['current_secret_ok'] = true;
+
+            return $result;
+        }
+
+        $headers = self::mergeWebhookServer($headers);
+        $result['has_signature_header'] = self::hasWebhookSignatureHeader($headers);
 
         if ($secret === '') {
             $result['failure_reason'] = 'no_secret';

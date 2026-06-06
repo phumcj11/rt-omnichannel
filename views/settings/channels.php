@@ -243,11 +243,23 @@ $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0]
                 <?php if ($webhookLogs === []) : ?>
                     <p class="mt-2 text-sm text-amber-800"><strong>ยังไม่เคยได้รับ webhook จาก Facebook</strong> — Meta ยังไม่ส่ง event มาที่เซิร์ฟเวอร์ หรือ URL/Subscribe ยังไม่ครบ</p>
                 <?php else :
-                    $latest = $webhookLogs[0];
+                    $latestPost = null;
+                    foreach ($webhookLogs as $wlRow) {
+                        if (!empty($wlRow['has_body'])) {
+                            $latestPost = $wlRow;
+                            break;
+                        }
+                    }
+                    $latest = $latestPost ?? $webhookLogs[0];
                     $storedSigOk = !empty($latest['signature_ok']);
                     $currentSecretOk = !empty($webhookAnalysis['current_secret_ok']);
                     $missingHeader = ($webhookAnalysis['failure_reason'] ?? '') === 'missing_header';
+                    $lastAt = (string) ($latest['created_at'] ?? '');
                     ?>
+                    <p class="mt-2 text-xs text-slate-600">
+                        Webhook ล่าสุดที่เซิร์ฟเวอร์ได้รับ: <strong><?= $lastAt !== '' ? htmlspecialchars($lastAt, ENT_QUOTES, 'UTF-8') : '-' ?></strong>
+                        — หลังทัก Messenger แล้ว refresh หน้านี้ ถ้า<strong>เวลาไม่เปลี่ยน</strong> = Meta ยังไม่ส่ง webhook มา (Subscribe messages + เลือก Page)
+                    </p>
                     <?php if ($storedSigOk || $currentSecretOk) : ?>
                         <p class="mt-2 text-sm text-emerald-800">
                             <i class="fa-solid fa-circle-check mr-1"></i>
@@ -287,6 +299,42 @@ $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0]
                         <?php endif; ?>
                     <?php endif; ?>
                 <?php endif; ?>
+                <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                    <table class="min-w-full text-left text-xs">
+                        <thead class="bg-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2">เวลา</th>
+                                <th class="px-3 py-2">ลายเซ็น</th>
+                                <th class="px-3 py-2">ผลลัพธ์</th>
+                                <th class="px-3 py-2">ตัวอย่าง payload</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <?php if ($webhookLogs === []) : ?>
+                                <tr>
+                                    <td colspan="4" class="px-3 py-4 text-center text-slate-500">ยังไม่มี log — ลอง Meta Send to server หรือทัก Messenger แล้ว refresh</td>
+                                </tr>
+                            <?php else : ?>
+                                <?php foreach ($webhookLogs as $wlRow) :
+                                    $sig = $wlRow['signature_ok'] ?? null;
+                                    $sigLabel = $sig === null || $sig === '' ? '—' : (!empty($sig) ? 'OK' : 'fail');
+                                    $sigClass = !empty($sig) ? 'text-emerald-700' : ($sig === null || $sig === '' ? 'text-slate-500' : 'text-red-700');
+                                    $preview = trim((string) ($wlRow['body_preview'] ?? ''));
+                                    if ($preview === '') {
+                                        $preview = '(ไม่มี body — error log)';
+                                    }
+                                    ?>
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="whitespace-nowrap px-3 py-2 font-mono text-slate-700"><?= htmlspecialchars((string) ($wlRow['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td class="px-3 py-2 font-bold <?= $sigClass ?>"><?= htmlspecialchars($sigLabel, ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td class="max-w-xs px-3 py-2 text-slate-700"><?= htmlspecialchars((string) ($wlRow['error_message'] ?? '—'), ENT_QUOTES, 'UTF-8') ?></td>
+                                        <td class="max-w-md truncate px-3 py-2 font-mono text-[11px] text-slate-500" title="<?= htmlspecialchars($preview, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($preview, ENT_QUOTES, 'UTF-8') ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
                 <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
                     <i class="fa-brands fa-facebook-messenger mr-1 text-blue-600"></i>
                     แชท Facebook ใน Inbox ตอนนี้:
@@ -299,11 +347,6 @@ $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0]
                         </span>
                     <?php endif; ?>
                 </p>
-                <?php if ($webhookLogs !== [] && !empty($webhookLogs[0]['error_message'])) : ?>
-                    <p class="mt-2 text-xs text-slate-600">
-                        Log ล่าสุด: <?= htmlspecialchars((string) $webhookLogs[0]['error_message'], ENT_QUOTES, 'UTF-8') ?>
-                    </p>
-                <?php endif; ?>
                 <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
                     <li>Webhook URL ต้องเป็น <strong><?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></strong></li>
                     <li>กด <strong>ตรวจ App ID/Secret</strong> ต้องผ่านก่อน — ถ้าไม่ผ่าน Meta Send to server จะ fail ทุกครั้ง</li>

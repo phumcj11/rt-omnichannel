@@ -49,12 +49,13 @@ final class SettingsController
             $verifyInDb = AppSetting::get('fb_verify_token');
             $webhookAnalysis = IntegrationConfigService::analyzeLatestWebhookLog();
             $st = \App\Helpers\Db::pdo()->query(
-                "SELECT id, signature_ok, error_message, created_at,
-                        LEFT(raw_body, 100) AS body_preview
+                "SELECT id, signature_ok, error_message, created_at, processed_at,
+                        LEFT(raw_body, 120) AS body_preview,
+                        CASE WHEN raw_body = '' OR raw_body IS NULL THEN 0 ELSE 1 END AS has_body
                  FROM webhook_logs
-                 WHERE provider = 'facebook' AND raw_body <> ''
+                 WHERE provider = 'facebook'
                  ORDER BY id DESC
-                 LIMIT 5"
+                 LIMIT 10"
             );
             $webhookLogs = $st->fetchAll(\PDO::FETCH_ASSOC);
         } catch (Throwable) {
