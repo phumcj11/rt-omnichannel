@@ -57,10 +57,11 @@ final class FacebookMessengerService extends BaseService
         $channel = Channel::findByCode(self::CHANNEL_CODE);
         $channelId = $channel !== null ? (int) $channel['id'] : null;
 
-        $sigOk = $this->validateSignature($rawBody, (string) ($server['HTTP_X_HUB_SIGNATURE_256'] ?? ''));
+        $sigOk = $this->validateSignature($rawBody, $server);
         $this->logWebhook($channelId, $rawBody, $server, $sigOk);
 
         if (!$sigOk) {
+            $this->logError($channelId, 'Invalid signature — ตรวจ App Secret ใน Channel Settings');
             http_response_code(403);
             header('Content-Type: text/plain; charset=UTF-8');
             echo 'Invalid signature';
@@ -302,18 +303,46 @@ final class FacebookMessengerService extends BaseService
         return $name !== '' ? $name : ('FB ' . substr($psid, -6));
     }
 
-    private function validateSignature(string $rawBody, string $header): bool
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function validateSignature(string $rawBody, array $server): bool
     {
         $secret = (string) ($this->cfg['app_secret'] ?? '');
         if ($secret === '') {
             return !empty(self::app()['debug']);
         }
+
+        $header = $this->signatureHeader($server);
         if ($header === '' || !str_starts_with($header, 'sha256=')) {
             return false;
         }
         $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
 
         return hash_equals($expected, $header);
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function signatureHeader(array $server): string
+    {
+        if (!empty($server['HTTP_X_HUB_SIGNATURE_256'])) {
+            return (string) $server['HTTP_X_HUB_SIGNATURE_256'];
+        }
+        if (function_exists('getallheaders')) {
+            /** @var array<string, string>|false $headers */
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strtolower((string) $name) === 'x-hub-signature-256') {
+                        return (string) $value;
+                    }
+                }
+            }
+        }
+
+        return '';
     }
 
     /**

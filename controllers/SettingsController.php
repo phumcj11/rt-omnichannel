@@ -43,8 +43,18 @@ final class SettingsController
         $fb = IntegrationConfigService::facebook();
         $webhookUrl = IntegrationConfigService::webhookUrl();
         $verifyInDb = null;
+        $webhookLogs = [];
         try {
             $verifyInDb = AppSetting::get('fb_verify_token');
+            $st = \App\Helpers\Db::pdo()->query(
+                "SELECT id, signature_ok, error_message, created_at,
+                        LEFT(raw_body, 100) AS body_preview
+                 FROM webhook_logs
+                 WHERE provider = 'facebook'
+                 ORDER BY id DESC
+                 LIMIT 5"
+            );
+            $webhookLogs = $st->fetchAll(\PDO::FETCH_ASSOC);
         } catch (Throwable) {
         }
 
@@ -95,6 +105,7 @@ final class SettingsController
                 'isLocalhost' => IntegrationConfigService::isLocalhostUrl(),
                 'activeVerifyToken' => trim((string) ($fb['verify_token'] ?? '')),
                 'verifyTokenInDb' => $verifyInDb !== null && trim($verifyInDb) !== '',
+                'webhookLogs' => $webhookLogs,
             ],
         ]);
     }

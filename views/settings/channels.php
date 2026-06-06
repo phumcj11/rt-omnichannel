@@ -15,6 +15,7 @@
  * @var bool $isLocalhost
  * @var string $activeVerifyToken
  * @var bool $verifyTokenInDb
+ * @var list<array<string,mixed>> $webhookLogs
  */
 declare(strict_types=1);
 
@@ -34,6 +35,7 @@ $branches = $branches ?? [];
 $isLocalhost = $isLocalhost ?? false;
 $activeVerifyToken = $activeVerifyToken ?? $verifyToken;
 $verifyTokenInDb = $verifyTokenInDb ?? false;
+$webhookLogs = $webhookLogs ?? [];
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -223,6 +225,30 @@ $verifyTokenInDb = $verifyTokenInDb ?? false;
                 </div>
                 <p id="fb-test-result" class="hidden text-sm font-medium"></p>
             </form>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-5">
+                <h4 class="font-bold text-slate-900"><i class="fa-solid fa-satellite-dish mr-1 text-slate-500"></i> สถานะ Webhook (รับข้อความเข้า Inbox)</h4>
+                <?php if ($webhookLogs === []) : ?>
+                    <p class="mt-2 text-sm text-amber-800"><strong>ยังไม่เคยได้รับ webhook จาก Facebook</strong> — Meta ยังไม่ส่ง event มาที่เซิร์ฟเวอร์ หรือ URL/Subscribe ยังไม่ครบ</p>
+                <?php else :
+                    $latest = $webhookLogs[0];
+                    $sigOk = !empty($latest['signature_ok']);
+                    ?>
+                    <p class="mt-2 text-sm <?= $sigOk ? 'text-emerald-800' : 'text-red-800' ?>">
+                        <?php if ($sigOk) : ?>
+                            <i class="fa-solid fa-circle-check mr-1"></i> ได้รับ webhook ล่าสุด <?= htmlspecialchars((string) ($latest['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?> — ลายเซ็น OK
+                        <?php else : ?>
+                            <i class="fa-solid fa-circle-xmark mr-1"></i> ได้รับ webhook แต่ <strong>App Secret ไม่ตรง</strong> — วาง App Secret ใหม่จาก Meta → Basic แล้วบันทึก
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+                <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
+                    <li>Webhook URL ต้องเป็น <strong><?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></strong></li>
+                    <li>Subscribe ฟิลด์ <strong>messages</strong> + เลือก <strong>Page</strong> ของร้าน</li>
+                    <li>App โหมด <strong>Development</strong>: คนทักต้องเป็น Admin/Developer/Tester ของ App — หรือสลับ App เป็น <strong>Live</strong></li>
+                    <li>ทดสอบ: ส่งข้อความจาก Messenger ไปที่ Page (ไม่ใช่แชทตัวเองใน Page)</li>
+                </ul>
+            </div>
 
             <p class="text-center text-xs text-slate-500">
                 ติดขัดตรงไหน? อ่าน <a href="#howto-faq" class="font-semibold text-brand hover:underline">แก้ปัญหาที่พบบ่อย</a> ในคู่มือด้านบน
