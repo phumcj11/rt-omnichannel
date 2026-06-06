@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use App\Services\IntegrationConfigService;
 use App\Services\FacebookMessengerService;
 
 $svc = new FacebookMessengerService();
@@ -18,7 +19,8 @@ try {
     }
     if ($method === 'POST') {
         $raw = file_get_contents('php://input');
-        $svc->handleWebhook($raw !== false ? $raw : '', $_SERVER);
+        $server = IntegrationConfigService::mergeWebhookServer($_SERVER);
+        $svc->handleWebhook($raw !== false ? $raw : '', $server);
         exit;
     }
     http_response_code(405);

@@ -1,0 +1,13 @@
+# Meta Facebook webhook — บาง shared hosting ไม่ส่ง X-Hub-Signature-* เข้า PHP โดยตรง
+<IfModule mod_setenvif.c>
+    SetEnvIfNoCase X-Hub-Signature-256 "(.+)" HTTP_X_HUB_SIGNATURE_256=$1
+    SetEnvIfNoCase X-Hub-Signature "(.+)" HTTP_X_HUB_SIGNATURE=$1
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:X-Hub-Signature-256} .+
+    RewriteRule ^ - [E=HTTP_X_HUB_SIGNATURE_256:%{HTTP:X-Hub-Signature-256}]
+    RewriteCond %{HTTP:X-Hub-Signature} .+
+    RewriteRule ^ - [E=HTTP_X_HUB_SIGNATURE:%{HTTP:X-Hub-Signature}]
+</IfModule>

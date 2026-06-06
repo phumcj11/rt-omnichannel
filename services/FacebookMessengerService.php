@@ -339,8 +339,8 @@ final class FacebookMessengerService extends BaseService
         if ($secret === '') {
             return 'ไม่มี App Secret — webhook ถูกปฏิเสธ (403)';
         }
-        if (IntegrationConfigService::signatureHeaderFromServer($server) === '') {
-            return 'ไม่พบ X-Hub-Signature-256 header — โฮสต์อาจ block header นี้';
+        if (!IntegrationConfigService::hasWebhookSignatureHeader($server)) {
+            return 'ไม่พบ X-Hub-Signature header — โฮสต์อาจ block header นี้ (ModSecurity/proxy)';
         }
 
         return 'App Secret ไม่ตรงกับ Meta — คัดลอกใหม่จาก App settings → Basic แล้วบันทึก';
@@ -387,13 +387,7 @@ final class FacebookMessengerService extends BaseService
             return !empty(self::app()['debug']);
         }
 
-        $header = IntegrationConfigService::signatureHeaderFromServer($server);
-        if ($header === '' || !str_starts_with($header, 'sha256=')) {
-            return false;
-        }
-        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
-
-        return hash_equals($expected, $header);
+        return IntegrationConfigService::verifyWebhookSignature($rawBody, $server, $secret);
     }
 
     /**

@@ -345,21 +345,79 @@ final class IntegrationConfigService extends BaseService
     }
 
     /**
+     * รวม header จากหลายแหล่ง (shared hosting มักไม่ใส่ custom header ใน $_SERVER)
+     *
+     * @param array<string, mixed> $server
+     * @return array<string, mixed>
+     */
+    public static function mergeWebhookServer(array $server): array
+    {
+        $merged = $server;
+
+        $headerLists = [];
+        if (function_exists('getallheaders')) {
+            /** @var array<string, string>|false $headers */
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                $headerLists[] = $headers;
+            }
+        }
+        if (function_exists('apache_request_headers')) {
+            /** @var array<string, string>|false $headers */
+            $headers = apache_request_headers();
+            if (is_array($headers)) {
+                $headerLists[] = $headers;
+            }
+        }
+
+        foreach ($headerLists as $headers) {
+            foreach ($headers as $name => $value) {
+                $key = 'HTTP_' . strtoupper(str_replace('-', '_', (string) $name));
+                if (empty($merged[$key])) {
+                    $merged[$key] = $value;
+                }
+            }
+        }
+
+        foreach (['HTTP_X_HUB_SIGNATURE_256', 'HTTP_X_HUB_SIGNATURE'] as $key) {
+            if (!empty($merged[$key])) {
+                continue;
+            }
+            $redirectKey = 'REDIRECT_' . $key;
+            if (!empty($merged[$redirectKey])) {
+                $merged[$key] = $merged[$redirectKey];
+            }
+            $env = getenv($key);
+            if ($env !== false && $env !== '') {
+                $merged[$key] = $env;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
      * @param array<string, mixed> $server
      */
-    public static function signatureHeaderFromServer(array $server): string
+    public static function signatureHeaderFromServer(array $server, string $algo = '256'): string
     {
-        foreach (['HTTP_X_HUB_SIGNATURE_256', 'REDIRECT_HTTP_X_HUB_SIGNATURE_256'] as $key) {
+        $keys = $algo === '1'
+            ? ['HTTP_X_HUB_SIGNATURE', 'REDIRECT_HTTP_X_HUB_SIGNATURE']
+            : ['HTTP_X_HUB_SIGNATURE_256', 'REDIRECT_HTTP_X_HUB_SIGNATURE_256'];
+
+        foreach ($keys as $key) {
             if (!empty($server[$key])) {
                 return (string) $server[$key];
             }
         }
+
+        $headerName = $algo === '1' ? 'x-hub-signature' : 'x-hub-signature-256';
         if (function_exists('getallheaders')) {
             /** @var array<string, string>|false $headers */
             $headers = getallheaders();
             if (is_array($headers)) {
                 foreach ($headers as $name => $value) {
-                    if (strtolower((string) $name) === 'x-hub-signature-256') {
+                    if (strtolower((string) $name) === $headerName) {
                         return (string) $value;
                     }
                 }
@@ -367,6 +425,47 @@ final class IntegrationConfigService extends BaseService
         }
 
         return '';
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    public static function hasWebhookSignatureHeader(array $server): bool
+    {
+        $h256 = self::signatureHeaderFromServer($server, '256');
+        if ($h256 !== '' && str_starts_with($h256, 'sha256=')) {
+            return true;
+        }
+        $h1 = self::signatureHeaderFromServer($server, '1');
+
+        return $h1 !== '' && str_starts_with($h1, 'sha1=');
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    public static function verifyWebhookSignature(string $rawBody, array $server, string $secret): bool
+    {
+        $secret = trim($secret);
+        if ($secret === '') {
+            return false;
+        }
+
+        $header256 = self::signatureHeaderFromServer($server, '256');
+        if ($header256 !== '' && str_starts_with($header256, 'sha256=')) {
+            $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+
+            return hash_equals($expected, $header256);
+        }
+
+        $header1 = self::signatureHeaderFromServer($server, '1');
+        if ($header1 !== '' && str_starts_with($header1, 'sha1=')) {
+            $expected = 'sha1=' . hash_hmac('sha1', $rawBody, $secret);
+
+            return hash_equals($expected, $header1);
+        }
+
+        return false;
     }
 
     /**
@@ -408,7 +507,6 @@ final class IntegrationConfigService extends BaseService
         if (!is_array($headers)) {
             $headers = [];
         }
-        $sigHeader = self::signatureHeaderFromServer($headers);
         $rawBody = (string) ($row['raw_body'] ?? '');
 
         $result = [
@@ -416,7 +514,7 @@ final class IntegrationConfigService extends BaseService
             'log_id' => (int) $row['id'],
             'created_at' => (string) ($row['created_at'] ?? ''),
             'stored_signature_ok' => !empty($row['signature_ok']),
-            'has_signature_header' => $sigHeader !== '',
+            'has_signature_header' => self::hasWebhookSignatureHeader($headers),
             'current_secret_ok' => false,
             'failure_reason' => '',
             'log_error' => $row['error_message'] ?? null,
@@ -427,14 +525,13 @@ final class IntegrationConfigService extends BaseService
 
             return $result;
         }
-        if ($sigHeader === '') {
+        if (!$result['has_signature_header']) {
             $result['failure_reason'] = 'missing_header';
 
             return $result;
         }
 
-        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
-        $result['current_secret_ok'] = hash_equals($expected, $sigHeader);
+        $result['current_secret_ok'] = self::verifyWebhookSignature($rawBody, $headers, $secret);
         if (!$result['current_secret_ok']) {
             $result['failure_reason'] = 'signature_mismatch';
         }

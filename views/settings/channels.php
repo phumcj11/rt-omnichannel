@@ -265,8 +265,13 @@ $webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
                     <?php elseif ($missingHeader) : ?>
                         <p class="mt-2 text-sm text-amber-900">
                             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                            ได้รับ webhook แต่เซิร์ฟเวอร์<strong>ไม่ได้รับ header X-Hub-Signature-256</strong>
-                            — ติดต่อ hosting ให้เปิด header นี้ (ModSecurity / proxy อาจ block)
+                            ได้รับ webhook แต่ PHP <strong>ไม่เห็น header ลายเซ็น</strong> จาก Meta
+                            — อัปเดตระบบแล้ว (webhooks/.htaccess) ลอง Meta Send to server อีกครั้งหลัง deploy
+                        </p>
+                        <p class="mt-2 text-xs text-amber-800">
+                            ถ้ายังไม่ผ่าน: ติดต่อ hosting (idmplus / kan-mkt) ให้ whitelist header
+                            <code class="rounded bg-white px-1">X-Hub-Signature-256</code> และ
+                            <code class="rounded bg-white px-1">X-Hub-Signature</code> — ModSecurity อาจ block
                         </p>
                     <?php else : ?>
                         <p class="mt-2 text-sm text-red-800">
