@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Helpers\Db;
+use App\Helpers\HttpClient;
 use App\Models\Channel;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -276,8 +277,8 @@ final class FacebookMessengerService extends BaseService
             . '?fields=first_name,last_name,profile_pic&access_token='
             . urlencode($token);
 
-        $raw = @file_get_contents($url);
-        if ($raw === false) {
+        $raw = HttpClient::get($url);
+        if ($raw === null || $raw === '') {
             return null;
         }
         /** @var array<string, mixed>|null $data */

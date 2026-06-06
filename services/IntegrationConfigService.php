@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Helpers\HttpClient;
 use App\Models\AppSetting;
 use App\Models\FacebookPage;
 
@@ -154,9 +155,15 @@ final class IntegrationConfigService extends BaseService
 
         $version = (string) ($cfg['graph_version'] ?? 'v21.0');
         $url = 'https://graph.facebook.com/' . $version . '/me?fields=id,name&access_token=' . urlencode($token);
-        $raw = @file_get_contents($url);
-        if ($raw === false) {
-            return ['ok' => false, 'error' => 'เรียก Facebook API ไม่สำเร็จ — ตรวจอินเทอร์เน็ต'];
+        $raw = HttpClient::get($url);
+        if ($raw === null || $raw === '') {
+            $hint = HttpClient::lastError();
+            $msg = 'เรียก Facebook API ไม่สำเร็จ';
+            if ($hint !== '') {
+                $msg .= ' — ' . $hint;
+            }
+
+            return ['ok' => false, 'error' => $msg];
         }
 
         /** @var array<string, mixed>|null $data */
