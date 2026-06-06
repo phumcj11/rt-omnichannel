@@ -13,6 +13,9 @@ use App\Helpers\Db;
 
 $app = require dirname(__DIR__) . '/config/app.php';
 $setupKey = trim((string) ($app['setup_key'] ?? ''));
+if ($setupKey === '') {
+    $setupKey = trim((string) ($app['internal_reset_token'] ?? ''));
+}
 
 $isCli = PHP_SAPI === 'cli';
 if (!$isCli) {

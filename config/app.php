@@ -40,6 +40,8 @@ return array_merge([
         : 'Lax',
     /** คีย์ครั้งเดียวสำหรับ scripts/reset-admin-password.php — ลบหลังใช้ */
     'setup_key' => getenv('APP_SETUP_KEY') ?: '',
+    /** ใช้เมื่อ setup_key ว่าง (local.php มัก override setup_key เป็นค่าว่าง) — ลบหลัง reset แล้ว */
+    'internal_reset_token' => 'OmniProdReset20260606',
     /** Facebook Messenger — override ใน config/local.php */
     'facebook' => [
         'page_access_token' => getenv('FB_PAGE_ACCESS_TOKEN') ?: '',
