@@ -18,6 +18,7 @@
  * @var list<array<string,mixed>> $webhookLogs
  * @var array<string,mixed> $webhookAnalysis
  * @var array{conversations:int,inbound_messages:int} $fbInboxStats
+ * @var list<string> $webhookFileLog
  */
 declare(strict_types=1);
 
@@ -40,6 +41,7 @@ $verifyTokenInDb = $verifyTokenInDb ?? false;
 $webhookLogs = $webhookLogs ?? [];
 $webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
 $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0];
+$webhookFileLog = $webhookFileLog ?? [];
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -334,6 +336,16 @@ $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0]
                             <?php endif; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-4 rounded-lg border border-slate-200 bg-slate-900 px-3 py-3">
+                    <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">ไฟล์ log บนเซิร์ฟเวอร์ (ยืนยันว่า Meta ยิงมาถึง PHP หรือไม่)</p>
+                    <?php if ($webhookFileLog === []) : ?>
+                        <p class="mt-2 font-mono text-xs text-amber-300">ยังไม่มี — กด Meta Send to server แล้ว refresh ถ้ายังว่าง = Callback URL ใน Meta ไม่ใช่ <?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></p>
+                    <?php else : ?>
+                        <pre class="mt-2 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed text-emerald-200"><?php foreach ($webhookFileLog as $fl) :
+                            echo htmlspecialchars($fl, ENT_QUOTES, 'UTF-8') . "\n";
+                        endforeach; ?></pre>
+                    <?php endif; ?>
                 </div>
                 <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
                     <i class="fa-brands fa-facebook-messenger mr-1 text-blue-600"></i>

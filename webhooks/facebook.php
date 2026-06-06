@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
 
+use App\Helpers\WebhookTrace;
 use App\Services\IntegrationConfigService;
 use App\Services\FacebookMessengerService;
 
@@ -19,8 +20,15 @@ try {
     }
     if ($method === 'POST') {
         $raw = file_get_contents('php://input');
+        $raw = $raw !== false ? $raw : '';
+        WebhookTrace::log(
+            'POST hit len=' . strlen($raw)
+            . ' sig256=' . (IntegrationConfigService::signatureHeaderFromServer(
+                IntegrationConfigService::mergeWebhookServer($_SERVER)
+            ) !== '' ? 'yes' : 'no')
+        );
         $server = IntegrationConfigService::mergeWebhookServer($_SERVER);
-        $svc->handleWebhook($raw !== false ? $raw : '', $server);
+        $svc->handleWebhook($raw, $server);
         exit;
     }
     http_response_code(405);

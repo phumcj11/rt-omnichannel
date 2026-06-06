@@ -8,6 +8,7 @@ namespace App\Services;
 
 use App\Helpers\Db;
 use App\Helpers\HttpClient;
+use App\Helpers\WebhookTrace;
 use App\Models\Channel;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -149,6 +150,11 @@ final class FacebookMessengerService extends BaseService
             $logId,
             $processed,
             $processed > 0 ? 'บันทึกข้อความเข้า Inbox แล้ว' : 'ได้รับ webhook แต่ไม่มีข้อความใหม่ (อาจเป็น delivery/read หรือ Subscribe ยังไม่ครบ)'
+        );
+        WebhookTrace::log(
+            'handled sig=' . ($sigOk ? 'ok' : 'fail')
+            . ' processed=' . $processed
+            . ' log_id=' . (string) ($logId ?? 0)
         );
 
         http_response_code(200);
@@ -493,7 +499,9 @@ final class FacebookMessengerService extends BaseService
             ]);
 
             return (int) $pdo->lastInsertId();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            WebhookTrace::log('DB logWebhook FAIL: ' . $e->getMessage());
+
             return null;
         }
     }

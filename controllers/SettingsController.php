@@ -10,6 +10,7 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Helpers\View;
+use App\Helpers\WebhookTrace;
 use App\Models\AppSetting;
 use App\Models\Branch;
 use App\Models\Channel;
@@ -111,6 +112,7 @@ final class SettingsController
                 'webhookLogs' => $webhookLogs,
                 'webhookAnalysis' => $webhookAnalysis,
                 'fbInboxStats' => IntegrationConfigService::facebookInboxStats(),
+                'webhookFileLog' => WebhookTrace::tail(12),
             ],
         ]);
     }
