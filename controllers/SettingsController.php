@@ -42,6 +42,11 @@ final class SettingsController
         $channels = [];
         $fb = IntegrationConfigService::facebook();
         $webhookUrl = IntegrationConfigService::webhookUrl();
+        $verifyInDb = null;
+        try {
+            $verifyInDb = AppSetting::get('fb_verify_token');
+        } catch (Throwable) {
+        }
 
         try {
             $channels = Channel::all();
@@ -88,6 +93,8 @@ final class SettingsController
                 'fbPageCount' => count($fbPages),
                 'branches' => $branches,
                 'isLocalhost' => IntegrationConfigService::isLocalhostUrl(),
+                'activeVerifyToken' => trim((string) ($fb['verify_token'] ?? '')),
+                'verifyTokenInDb' => $verifyInDb !== null && trim($verifyInDb) !== '',
             ],
         ]);
     }

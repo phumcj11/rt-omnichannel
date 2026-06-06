@@ -13,6 +13,8 @@
  * @var int $fbPageCount
  * @var list<array<string,mixed>> $branches
  * @var bool $isLocalhost
+ * @var string $activeVerifyToken
+ * @var bool $verifyTokenInDb
  */
 declare(strict_types=1);
 
@@ -29,6 +31,8 @@ $fbPages = $fbPages ?? [];
 $fbPageCount = $fbPageCount ?? count($fbPages);
 $branches = $branches ?? [];
 $isLocalhost = $isLocalhost ?? false;
+$activeVerifyToken = $activeVerifyToken ?? $verifyToken;
+$verifyTokenInDb = $verifyTokenInDb ?? false;
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -141,7 +145,16 @@ $isLocalhost = $isLocalhost ?? false;
                 <div class="rounded-xl border border-slate-100 bg-slate-50/80 p-5">
                     <p class="text-[11px] font-extrabold uppercase tracking-wider text-brand">ขั้นที่ 2</p>
                     <h4 class="mt-1 font-bold text-slate-900">Verify Token</h4>
-                    <p class="mt-1 text-xs text-slate-500">ใส่ค่าเดียวกันใน Meta ตอน Verify webhook · <a href="#howto-webhook" class="font-semibold text-brand hover:underline">ดูวิธีทำ →</a></p>
+                    <p class="mt-1 text-xs text-slate-500">ใส่ค่าเดียวกันใน Meta ตอน Verify webhook · <strong class="text-amber-700">กด「บันทึกการตั้งค่า」ก่อน</strong> แล้วค่อย Verify ใน Meta</p>
+                    <?php if ($activeVerifyToken !== '') : ?>
+                        <div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-950">
+                            <p class="font-bold">ค่าที่ระบบใช้จริงตอนนี้ (ให้ Meta ใช้ตัวนี้):</p>
+                            <code id="active-verify-token" class="mt-1 block break-all font-mono text-[13px]"><?= htmlspecialchars($activeVerifyToken, ENT_QUOTES, 'UTF-8') ?></code>
+                            <?php if (!$verifyTokenInDb) : ?>
+                                <p class="mt-1 text-amber-800">มาจาก config/local.php — ถ้ากด「สุ่มใหม่」ต้องบันทึกก่อน Meta ถึงจะเห็นค่าใหม่</p>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="mt-3 flex flex-col gap-2 sm:flex-row">
                         <input type="text" name="verify_token" id="verify-token" value="<?= htmlspecialchars($verifyToken !== '' ? $verifyToken : $suggestedVerify, ENT_QUOTES, 'UTF-8') ?>" class="ui-input min-w-0 flex-1 px-3 py-2.5 font-mono text-sm" <?= $canEdit ? '' : 'readonly' ?> />
                         <?php if ($canEdit) : ?>

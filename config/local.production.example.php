@@ -25,7 +25,7 @@ return [
     ],
     'facebook' => [
         'page_access_token' => '',
-        'verify_token' => 'omni_fb_verify_change_me',
+        'verify_token' => '',
         'app_secret' => '',
         'page_id' => '',
         'graph_version' => 'v21.0',
