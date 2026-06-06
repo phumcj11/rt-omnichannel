@@ -217,13 +217,17 @@ $webhookLogs = $webhookLogs ?? [];
                             <i class="fa-solid fa-floppy-disk"></i> บันทึกการตั้งค่า
                         </button>
                         <button type="button" id="btn-test-fb" data-url="<?= htmlspecialchars(Url::to('/settings/channels/facebook/test'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 shadow-sm hover:bg-slate-50">
-                            <i class="fa-solid fa-plug"></i> ทดสอบการเชื่อมต่อ
+                            <i class="fa-solid fa-plug"></i> ทดสอบ Page Token
+                        </button>
+                        <button type="button" id="btn-test-app" data-url="<?= htmlspecialchars(Url::to('/settings/channels/facebook/test-app'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-bold text-amber-950 shadow-sm hover:bg-amber-100">
+                            <i class="fa-solid fa-key"></i> ตรวจ App ID/Secret
                         </button>
                     <?php else : ?>
                         <p class="text-sm text-slate-500"><i class="fa-solid fa-lock mr-1"></i> ต้อง login เป็น Admin หรือ Manager จึงจะแก้ไขได้</p>
                     <?php endif; ?>
                 </div>
                 <p id="fb-test-result" class="hidden text-sm font-medium"></p>
+                <p id="fb-app-test-result" class="hidden text-sm font-medium"></p>
             </form>
 
             <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-5">
@@ -244,7 +248,8 @@ $webhookLogs = $webhookLogs ?? [];
                 <?php endif; ?>
                 <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
                     <li>Webhook URL ต้องเป็น <strong><?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></strong></li>
-                    <li>Subscribe ฟิลด์ <strong>messages</strong> + เลือก <strong>Page</strong> ของร้าน</li>
+                    <li>กด <strong>ตรวจ App ID/Secret</strong> ต้องผ่านก่อน — ถ้าไม่ผ่าน Meta Send to server จะ fail ทุกครั้ง</li>
+                    <li>Subscribe ฟิลด์ <strong>messages</strong> (กด Subscribe ไม่ใช่แค่ Test) + เลือก Page</li>
                     <li>App โหมด <strong>Development</strong>: คนทักต้องเป็น Admin/Developer/Tester ของ App — หรือสลับ App เป็น <strong>Live</strong></li>
                     <li>ทดสอบ: ส่งข้อความจาก Messenger ไปที่ Page (ไม่ใช่แชทตัวเองใน Page)</li>
                 </ul>

@@ -113,4 +113,49 @@
                 });
         });
     }
+
+    var appTestBtn = document.getElementById('btn-test-app');
+    var appTestResult = document.getElementById('fb-app-test-result');
+    if (appTestBtn && appTestResult) {
+        appTestBtn.addEventListener('click', function () {
+            var url = appTestBtn.getAttribute('data-url');
+            var csrf = window.__SETTINGS_CSRF__ || '';
+            if (!url) {
+                return;
+            }
+            appTestBtn.disabled = true;
+            appTestResult.classList.remove('hidden');
+            appTestResult.className = 'text-sm font-medium text-slate-600';
+            appTestResult.textContent = 'กำลังตรวจ App ID/Secret…';
+
+            var body = new URLSearchParams();
+            body.set('_csrf', csrf);
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                credentials: 'same-origin',
+                body: body.toString(),
+            })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    appTestBtn.disabled = false;
+                    if (data && data.ok) {
+                        appTestResult.className = 'text-sm font-medium text-emerald-700';
+                        appTestResult.textContent =
+                            'App ID/Secret ถูกต้อง — ลอง Meta Send to server อีกครั้ง (Subscribe messages ด้วย)';
+                    } else {
+                        appTestResult.className = 'text-sm font-medium text-red-700';
+                        appTestResult.textContent = 'ไม่ผ่าน: ' + ((data && data.error) || 'unknown');
+                    }
+                })
+                .catch(function () {
+                    appTestBtn.disabled = false;
+                    appTestResult.className = 'text-sm font-medium text-red-700';
+                    appTestResult.textContent = 'เรียก API ไม่สำเร็จ';
+                });
+        });
+    }
 })();

@@ -182,6 +182,28 @@ final class SettingsController
         echo json_encode(IntegrationConfigService::testFacebookConnection(), JSON_UNESCAPED_UNICODE);
     }
 
+    public function testFacebookApp(): void
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['ok' => false, 'error' => 'method_not_allowed'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        if (!Auth::canManageSettings()) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        if (!Csrf::validate($_POST['_csrf'] ?? null)) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'csrf'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        echo json_encode(IntegrationConfigService::verifyAppCredentials(), JSON_UNESCAPED_UNICODE);
+    }
+
     public function sla(): void
     {
         $app = $this->appConfig();

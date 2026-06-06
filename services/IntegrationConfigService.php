@@ -43,6 +43,12 @@ final class IntegrationConfigService extends BaseService
             $cfg['default_branch_id'] = 1;
         }
 
+        foreach (['page_access_token', 'app_secret', 'verify_token', 'page_id', 'app_id'] as $k) {
+            if (isset($cfg[$k]) && is_string($cfg[$k])) {
+                $cfg[$k] = trim($cfg[$k]);
+            }
+        }
+
         return $cfg;
     }
 
@@ -335,5 +341,49 @@ final class IntegrationConfigService extends BaseService
         }
 
         return $base . '/webhooks/facebook.php';
+    }
+
+    /**
+     * ตรวจว่า App ID + App Secret ตรงกับ Meta (ใช้ client_credentials)
+     *
+     * @return array{ok: bool, error?: string}
+     */
+    public static function verifyAppCredentials(): array
+    {
+        $cfg = self::facebook();
+        $appId = trim((string) ($cfg['app_id'] ?? ''));
+        $secret = trim((string) ($cfg['app_secret'] ?? ''));
+        if ($appId === '') {
+            return ['ok' => false, 'error' => 'ยังไม่ได้ใส่ App ID'];
+        }
+        if ($secret === '') {
+            return ['ok' => false, 'error' => 'ยังไม่ได้ใส่ App Secret — Meta webhook จะ fail ทุกครั้ง'];
+        }
+
+        $version = (string) ($cfg['graph_version'] ?? 'v21.0');
+        $url = 'https://graph.facebook.com/' . $version . '/oauth/access_token?'
+            . 'client_id=' . urlencode($appId)
+            . '&client_secret=' . urlencode($secret)
+            . '&grant_type=client_credentials';
+        $raw = HttpClient::get($url);
+        if ($raw === null || $raw === '') {
+            return ['ok' => false, 'error' => 'เรียก Meta ไม่สำเร็จ — ' . HttpClient::lastError()];
+        }
+
+        /** @var array<string, mixed>|null $data */
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            return ['ok' => false, 'error' => 'ได้ response ที่อ่านไม่ได้จาก Meta'];
+        }
+        if (isset($data['error'])) {
+            $msg = is_array($data['error']) ? (string) ($data['error']['message'] ?? 'App ID/Secret ไม่ถูกต้อง') : 'App ID/Secret ไม่ถูกต้อง';
+
+            return ['ok' => false, 'error' => $msg . ' — คัดลอก App ID + App Secret ใหม่จาก Meta → Basic'];
+        }
+        if (empty($data['access_token'])) {
+            return ['ok' => false, 'error' => 'Meta ไม่คืน access_token — ตรวจ App ID/Secret'];
+        }
+
+        return ['ok' => true];
     }
 }

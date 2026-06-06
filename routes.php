@@ -26,6 +26,7 @@ $router->get('/settings/channels', SettingsController::class, 'channels');
 $router->post('/settings/channels/facebook', SettingsController::class, 'saveFacebook');
 $router->post('/settings/channels/facebook/page', SettingsController::class, 'saveFacebookPage');
 $router->post('/settings/channels/facebook/test', SettingsController::class, 'testFacebook');
+$router->post('/settings/channels/facebook/test-app', SettingsController::class, 'testFacebookApp');
 $router->get('/settings/sla', SettingsController::class, 'sla');
 
 $router->get('/inbox', InboxController::class, 'index');

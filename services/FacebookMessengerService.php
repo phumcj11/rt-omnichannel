@@ -61,7 +61,7 @@ final class FacebookMessengerService extends BaseService
         $this->logWebhook($channelId, $rawBody, $server, $sigOk);
 
         if (!$sigOk) {
-            $this->logError($channelId, 'Invalid signature — ตรวจ App Secret ใน Channel Settings');
+            $this->logError($channelId, $this->signatureFailureReason($server));
             http_response_code(403);
             header('Content-Type: text/plain; charset=UTF-8');
             echo 'Invalid signature';
@@ -70,6 +70,7 @@ final class FacebookMessengerService extends BaseService
 
         /** @var array<string, mixed>|null $payload */
         $payload = json_decode($rawBody, true);
+        $payload = $this->normalizeWebhookPayload(is_array($payload) ? $payload : null);
         if (!is_array($payload) || ($payload['object'] ?? '') !== 'page') {
             http_response_code(200);
             header('Content-Type: text/plain; charset=UTF-8');
@@ -328,6 +329,53 @@ final class FacebookMessengerService extends BaseService
         $name = trim($first . ' ' . $last);
 
         return $name !== '' ? $name : ('FB ' . substr($psid, -6));
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    private function signatureFailureReason(array $server): string
+    {
+        $secret = trim((string) ($this->cfg['app_secret'] ?? ''));
+        if ($secret === '') {
+            return 'ไม่มี App Secret — webhook ถูกปฏิเสธ (403)';
+        }
+        if ($this->signatureHeader($server) === '') {
+            return 'ไม่พบ X-Hub-Signature-256 header';
+        }
+
+        return 'App Secret ไม่ตรงกับ Meta — คัดลอกใหม่จาก App settings → Basic แล้วบันทึก';
+    }
+
+    /**
+     * @param array<string, mixed>|null $payload
+     * @return array<string, mixed>|null
+     */
+    private function normalizeWebhookPayload(?array $payload): ?array
+    {
+        if ($payload === null) {
+            return null;
+        }
+        if (($payload['object'] ?? '') === 'page') {
+            return $payload;
+        }
+        if (($payload['field'] ?? '') === 'messages' && is_array($payload['value'] ?? null)) {
+            $pageId = trim((string) ($this->cfg['page_id'] ?? ''));
+
+            return [
+                'object' => 'page',
+                'entry' => [[
+                    'id' => $pageId !== '' ? $pageId : '0',
+                    'time' => (int) round(microtime(true) * 1000),
+                    'changes' => [[
+                        'field' => 'messages',
+                        'value' => $payload['value'],
+                    ]],
+                ]],
+            ];
+        }
+
+        return $payload;
     }
 
     /**
