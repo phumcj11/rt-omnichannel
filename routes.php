@@ -27,6 +27,7 @@ $router->post('/settings/channels/facebook', SettingsController::class, 'saveFac
 $router->post('/settings/channels/facebook/page', SettingsController::class, 'saveFacebookPage');
 $router->post('/settings/channels/facebook/test', SettingsController::class, 'testFacebook');
 $router->post('/settings/channels/facebook/test-app', SettingsController::class, 'testFacebookApp');
+$router->get('/settings/channels/facebook/webhook-status', SettingsController::class, 'facebookWebhookStatus');
 $router->get('/settings/sla', SettingsController::class, 'sla');
 
 $router->get('/inbox', InboxController::class, 'index');

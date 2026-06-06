@@ -19,6 +19,7 @@
  * @var array<string,mixed> $webhookAnalysis
  * @var array{conversations:int,inbound_messages:int} $fbInboxStats
  * @var list<string> $webhookFileLog
+ * @var string $webhookRefreshedAt
  */
 declare(strict_types=1);
 
@@ -43,6 +44,7 @@ $webhookLogs = $webhookLogs ?? [];
 $webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
 $fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0];
 $webhookFileLog = $webhookFileLog ?? [];
+$webhookRefreshedAt = $webhookRefreshedAt ?? '';
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -256,8 +258,22 @@ $webhookFileLog = $webhookFileLog ?? [];
                 ></div>
             </form>
 
-            <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-5">
-                <h4 class="font-bold text-slate-900"><i class="fa-solid fa-satellite-dish mr-1 text-slate-500"></i> สถานะ Webhook (รับข้อความเข้า Inbox)</h4>
+            <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-5" id="webhook-status">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <h4 class="font-bold text-slate-900"><i class="fa-solid fa-satellite-dish mr-1 text-slate-500"></i> สถานะ Webhook (รับข้อความเข้า Inbox)</h4>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="webhook-refreshed-at" class="text-[11px] text-slate-500">อัปเดต <?= htmlspecialchars((string) ($webhookRefreshedAt ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                        <button
+                            type="button"
+                            id="btn-refresh-webhook"
+                            data-url="<?= htmlspecialchars(Url::to('/settings/channels/facebook/webhook-status'), ENT_QUOTES, 'UTF-8') ?>"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                        >
+                            <i class="fa-solid fa-rotate-right" id="webhook-refresh-icon"></i> รีเฟรช log
+                        </button>
+                    </div>
+                </div>
+                <div id="webhook-summary-box">
                 <?php if ($webhookLogs === []) : ?>
                     <p class="mt-2 text-sm text-amber-800"><strong>ยังไม่เคยได้รับ webhook จาก Facebook</strong> — Meta ยังไม่ส่ง event มาที่เซิร์ฟเวอร์ หรือ URL/Subscribe ยังไม่ครบ</p>
                 <?php else :
@@ -315,6 +331,7 @@ $webhookFileLog = $webhookFileLog ?? [];
                         <?php endif; ?>
                     <?php endif; ?>
                 <?php endif; ?>
+                </div>
                 <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
                     <table class="min-w-full text-left text-xs">
                         <thead class="bg-slate-100 text-[11px] font-bold uppercase tracking-wide text-slate-600">
@@ -325,7 +342,7 @@ $webhookFileLog = $webhookFileLog ?? [];
                                 <th class="px-3 py-2">ตัวอย่าง payload</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
+                        <tbody id="webhook-log-tbody" class="divide-y divide-slate-100">
                             <?php if ($webhookLogs === []) : ?>
                                 <tr>
                                     <td colspan="4" class="px-3 py-4 text-center text-slate-500">ยังไม่มี log — ลอง Meta Send to server หรือทัก Messenger แล้ว refresh</td>
@@ -354,9 +371,9 @@ $webhookFileLog = $webhookFileLog ?? [];
                 <div class="mt-4 rounded-lg border border-slate-200 bg-slate-900 px-3 py-3">
                     <p class="text-[11px] font-bold uppercase tracking-wide text-slate-400">ไฟล์ log บนเซิร์ฟเวอร์ (ยืนยันว่า Meta ยิงมาถึง PHP หรือไม่)</p>
                     <?php if ($webhookFileLog === []) : ?>
-                        <p class="mt-2 font-mono text-xs text-amber-300">ยังไม่มี — กด Meta Send to server แล้ว refresh ถ้ายังว่าง = Callback URL ใน Meta ไม่ใช่ <?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></p>
+                        <p id="webhook-file-log-box" class="mt-2 font-mono text-xs text-amber-300">ยังไม่มี — กด Meta Send to server แล้วกด「รีเฟรช log」ถ้ายังว่าง = Callback URL ใน Meta ไม่ใช่ <?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></p>
                     <?php else : ?>
-                        <pre class="mt-2 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed text-emerald-200"><?php foreach ($webhookFileLog as $fl) :
+                        <pre id="webhook-file-log-box" class="mt-2 max-h-40 overflow-auto font-mono text-[11px] leading-relaxed text-emerald-200"><?php foreach ($webhookFileLog as $fl) :
                             echo htmlspecialchars($fl, ENT_QUOTES, 'UTF-8') . "\n";
                         endforeach; ?></pre>
                     <?php endif; ?>
@@ -364,8 +381,8 @@ $webhookFileLog = $webhookFileLog ?? [];
                 <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
                     <i class="fa-brands fa-facebook-messenger mr-1 text-blue-600"></i>
                     แชท Facebook ใน Inbox ตอนนี้:
-                    <strong><?= (int) ($fbInboxStats['conversations'] ?? 0) ?></strong> รายการ /
-                    <strong><?= (int) ($fbInboxStats['inbound_messages'] ?? 0) ?></strong> ข้อความเข้า
+                    <strong id="webhook-inbox-conv"><?= (int) ($fbInboxStats['conversations'] ?? 0) ?></strong> รายการ /
+                    <strong id="webhook-inbox-msgs"><?= (int) ($fbInboxStats['inbound_messages'] ?? 0) ?></strong> ข้อความเข้า
                     <?php if ((int) ($fbInboxStats['conversations'] ?? 0) === 0) : ?>
                         <span class="block mt-1 text-xs text-amber-900">
                             ถ้า Meta Test ผ่านแต่ยัง 0 รายการ → กด <strong>Subscribe</strong> ฟิลด์ messages + เลือก Page

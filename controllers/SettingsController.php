@@ -10,7 +10,6 @@ use App\Helpers\Auth;
 use App\Helpers\Csrf;
 use App\Helpers\Redirect;
 use App\Helpers\View;
-use App\Helpers\WebhookTrace;
 use App\Models\AppSetting;
 use App\Models\Branch;
 use App\Models\Channel;
@@ -44,21 +43,13 @@ final class SettingsController
         $fb = IntegrationConfigService::facebook();
         $webhookUrl = IntegrationConfigService::webhookUrl();
         $verifyInDb = null;
-        $webhookLogs = [];
-        $webhookAnalysis = ['has_log' => false];
+        $webhookSnapshot = IntegrationConfigService::webhookStatusSnapshot();
+        $webhookLogs = $webhookSnapshot['logs'];
+        $webhookAnalysis = $webhookSnapshot['analysis'];
+        $fbInboxStats = $webhookSnapshot['inbox'];
+        $webhookFileLog = $webhookSnapshot['file_log'];
         try {
             $verifyInDb = AppSetting::get('fb_verify_token');
-            $webhookAnalysis = IntegrationConfigService::analyzeLatestWebhookLog();
-            $st = \App\Helpers\Db::pdo()->query(
-                "SELECT id, signature_ok, error_message, created_at, processed_at,
-                        LEFT(raw_body, 120) AS body_preview,
-                        CASE WHEN raw_body = '' OR raw_body IS NULL THEN 0 ELSE 1 END AS has_body
-                 FROM webhook_logs
-                 WHERE provider = 'facebook'
-                 ORDER BY id DESC
-                 LIMIT 10"
-            );
-            $webhookLogs = $st->fetchAll(\PDO::FETCH_ASSOC);
         } catch (Throwable) {
         }
 
@@ -111,8 +102,9 @@ final class SettingsController
                 'verifyTokenInDb' => $verifyInDb !== null && trim($verifyInDb) !== '',
                 'webhookLogs' => $webhookLogs,
                 'webhookAnalysis' => $webhookAnalysis,
-                'fbInboxStats' => IntegrationConfigService::facebookInboxStats(),
-                'webhookFileLog' => WebhookTrace::tail(12),
+                'fbInboxStats' => $fbInboxStats,
+                'webhookFileLog' => $webhookFileLog,
+                'webhookRefreshedAt' => $webhookSnapshot['refreshed_at'],
             ],
         ]);
     }
@@ -210,6 +202,19 @@ final class SettingsController
         }
 
         echo json_encode(IntegrationConfigService::verifyAppCredentials(), JSON_UNESCAPED_UNICODE);
+    }
+
+    public function facebookWebhookStatus(): void
+    {
+        header('Content-Type: application/json; charset=UTF-8');
+        if (!Auth::canManageSettings()) {
+            http_response_code(403);
+            echo json_encode(['ok' => false, 'error' => 'forbidden'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $snap = IntegrationConfigService::webhookStatusSnapshot();
+        echo json_encode(['ok' => true] + $snap, JSON_UNESCAPED_UNICODE);
     }
 
     public function sla(): void

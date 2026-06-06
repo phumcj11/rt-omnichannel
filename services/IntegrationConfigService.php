@@ -8,6 +8,7 @@ namespace App\Services;
 
 use App\Helpers\Db;
 use App\Helpers\HttpClient;
+use App\Helpers\WebhookTrace;
 use App\Models\AppSetting;
 use App\Models\FacebookPage;
 
@@ -605,6 +606,47 @@ final class IntegrationConfigService extends BaseService
         }
 
         return $result;
+    }
+
+    /**
+     * ข้อมูลสถานะ webhook สำหรับหน้า Settings + API รีเฟรช
+     *
+     * @return array{
+     *   logs: list<array<string,mixed>>,
+     *   analysis: array<string,mixed>,
+     *   inbox: array{conversations:int,inbound_messages:int},
+     *   file_log: list<string>,
+     *   trust_unsigned: bool,
+     *   refreshed_at: string
+     * }
+     */
+    public static function webhookStatusSnapshot(): array
+    {
+        $webhookLogs = [];
+        $webhookAnalysis = ['has_log' => false];
+        try {
+            $webhookAnalysis = self::analyzeLatestWebhookLog();
+            $st = Db::pdo()->query(
+                "SELECT id, signature_ok, error_message, created_at, processed_at,
+                        LEFT(raw_body, 120) AS body_preview,
+                        CASE WHEN raw_body = '' OR raw_body IS NULL THEN 0 ELSE 1 END AS has_body
+                 FROM webhook_logs
+                 WHERE provider = 'facebook'
+                 ORDER BY id DESC
+                 LIMIT 10"
+            );
+            $webhookLogs = $st->fetchAll(\PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+        }
+
+        return [
+            'logs' => $webhookLogs,
+            'analysis' => $webhookAnalysis,
+            'inbox' => self::facebookInboxStats(),
+            'file_log' => WebhookTrace::tail(12),
+            'trust_unsigned' => self::webhookTrustUnsigned(),
+            'refreshed_at' => date('Y-m-d H:i:s'),
+        ];
     }
 
     /**

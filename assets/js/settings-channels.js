@@ -179,4 +179,111 @@
         },
         failPrefix: 'App ID/Secret ไม่ผ่าน: ',
     });
+
+    var refreshBtn = document.getElementById('btn-refresh-webhook');
+    var logTbody = document.getElementById('webhook-log-tbody');
+    var refreshedAt = document.getElementById('webhook-refreshed-at');
+    var refreshIcon = document.getElementById('webhook-refresh-icon');
+    var fileLogBox = document.getElementById('webhook-file-log-box');
+    var inboxConv = document.getElementById('webhook-inbox-conv');
+    var inboxMsgs = document.getElementById('webhook-inbox-msgs');
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function renderLogRows(logs) {
+        if (!logTbody) {
+            return;
+        }
+        if (!logs || !logs.length) {
+            logTbody.innerHTML =
+                '<tr><td colspan="4" class="px-3 py-4 text-center text-slate-500">ยังไม่มี log — ลอง Meta Send to server แล้วกดรีเฟรช</td></tr>';
+            return;
+        }
+        logTbody.innerHTML = logs
+            .map(function (row) {
+                var sig = row.signature_ok;
+                var sigLabel = sig === null || sig === '' || sig === undefined ? '—' : sig === 1 || sig === '1' ? 'OK' : 'fail';
+                var sigClass =
+                    sigLabel === 'OK' ? 'text-emerald-700' : sigLabel === '—' ? 'text-slate-500' : 'text-red-700';
+                var preview = (row.body_preview || '').trim();
+                if (!preview) {
+                    preview = '(ไม่มี body — error log)';
+                }
+                return (
+                    '<tr class="hover:bg-slate-50/80">' +
+                    '<td class="whitespace-nowrap px-3 py-2 font-mono text-slate-700">' +
+                    escHtml(row.created_at || '') +
+                    '</td>' +
+                    '<td class="px-3 py-2 font-bold ' +
+                    sigClass +
+                    '">' +
+                    escHtml(sigLabel) +
+                    '</td>' +
+                    '<td class="max-w-xs px-3 py-2 text-slate-700">' +
+                    escHtml(row.error_message || '—') +
+                    '</td>' +
+                    '<td class="max-w-md truncate px-3 py-2 font-mono text-[11px] text-slate-500" title="' +
+                    escHtml(preview) +
+                    '">' +
+                    escHtml(preview) +
+                    '</td></tr>'
+                );
+            })
+            .join('');
+    }
+
+    if (refreshBtn && logTbody) {
+        refreshBtn.addEventListener('click', function () {
+            var url = refreshBtn.getAttribute('data-url');
+            if (!url) {
+                location.reload();
+                return;
+            }
+            refreshBtn.disabled = true;
+            if (refreshIcon) {
+                refreshIcon.classList.add('fa-spin');
+            }
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) {
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (!data || !data.ok) {
+                        throw new Error((data && data.error) || 'load failed');
+                    }
+                    renderLogRows(data.logs || []);
+                    if (refreshedAt) {
+                        refreshedAt.textContent = 'อัปเดต ' + (data.refreshed_at || '');
+                    }
+                    if (fileLogBox) {
+                        var lines = data.file_log || [];
+                        if (!lines.length) {
+                            fileLogBox.outerHTML =
+                                '<p id="webhook-file-log-box" class="mt-2 font-mono text-xs text-amber-300">ยังไม่มี — กด Meta Send to server แล้วกด「รีเฟรช log」</p>';
+                        } else {
+                            fileLogBox.textContent = lines.join('\n');
+                        }
+                    }
+                    if (inboxConv && data.inbox) {
+                        inboxConv.textContent = String(data.inbox.conversations || 0);
+                    }
+                    if (inboxMsgs && data.inbox) {
+                        inboxMsgs.textContent = String(data.inbox.inbound_messages || 0);
+                    }
+                })
+                .catch(function () {
+                    location.reload();
+                })
+                .finally(function () {
+                    refreshBtn.disabled = false;
+                    if (refreshIcon) {
+                        refreshIcon.classList.remove('fa-spin');
+                    }
+                });
+        });
+    }
 })();
