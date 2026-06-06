@@ -143,6 +143,7 @@ final class SettingsController
             'verify_token' => $verify,
             'page_access_token' => (string) ($_POST['page_access_token'] ?? ''),
             'app_secret' => (string) ($_POST['app_secret'] ?? ''),
+            'app_id' => (string) ($_POST['app_id'] ?? ''),
         ]);
 
         Redirect::to('/settings/channels?ok=saved');

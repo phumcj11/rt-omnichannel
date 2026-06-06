@@ -26,6 +26,7 @@ $hasFbToken = trim((string) ($facebook['page_access_token'] ?? '')) !== '';
 $hasFbSecret = trim((string) ($facebook['app_secret'] ?? '')) !== '';
 $verifyToken = (string) ($facebook['verify_token'] ?? '');
 $pageId = (string) ($facebook['page_id'] ?? '');
+$appId = (string) ($facebook['app_id'] ?? '');
 $canEdit = $canEdit ?? false;
 $fbPages = $fbPages ?? [];
 $fbPageCount = $fbPageCount ?? count($fbPages);
@@ -171,6 +172,10 @@ $verifyTokenInDb = $verifyTokenInDb ?? false;
                     <p class="mt-1 text-xs text-slate-500"><a href="#howto-tokens" class="font-semibold text-brand hover:underline">วิธีหา Token / Secret / Page ID ในคู่มือ →</a></p>
                     <div class="mt-4 grid gap-4 sm:grid-cols-2">
                         <label class="block text-xs font-bold text-slate-600 sm:col-span-2">
+                            App ID
+                            <input type="text" name="app_id" value="<?= htmlspecialchars($appId, ENT_QUOTES, 'UTF-8') ?>" placeholder="จาก App settings → Basic" class="ui-input mt-1.5 w-full px-3 py-2.5 text-sm font-mono" <?= $canEdit ? '' : 'readonly' ?> />
+                        </label>
+                        <label class="block text-xs font-bold text-slate-600 sm:col-span-2">
                             Page ID
                             <input type="text" name="page_id" value="<?= htmlspecialchars($pageId, ENT_QUOTES, 'UTF-8') ?>" placeholder="123456789012345" class="ui-input mt-1.5 w-full px-3 py-2.5 text-sm" <?= $canEdit ? '' : 'readonly' ?> />
                         </label>
@@ -179,7 +184,8 @@ $verifyTokenInDb = $verifyTokenInDb ?? false;
                             <?php if ($tokenMask !== '') : ?>
                                 <span class="ml-1 font-normal text-emerald-600">(บันทึกแล้ว: <?= htmlspecialchars($tokenMask, ENT_QUOTES, 'UTF-8') ?>)</span>
                             <?php endif; ?>
-                            <input type="password" name="page_access_token" autocomplete="off" placeholder="<?= $hasFbToken ? 'เว้นว่าง = คงค่าเดิม' : 'EAA...' ?>" class="ui-input mt-1.5 w-full px-3 py-2.5 text-sm font-mono" <?= $canEdit ? '' : 'readonly' ?> />
+                            <input type="password" name="page_access_token" autocomplete="off" placeholder="<?= $hasFbToken ? 'เว้นว่าง = คงค่าเดิม' : 'EAA... จาก Messenger → API Setup' ?>" class="ui-input mt-1.5 w-full px-3 py-2.5 text-sm font-mono" <?= $canEdit ? '' : 'readonly' ?> />
+                            <span class="mt-1 block font-normal text-slate-500">ต้องเป็น <strong>Page Access Token</strong> จาก Messenger → API Setup → Generate Token (ไม่ใช่ User Token)</span>
                         </label>
                         <label class="block text-xs font-bold text-slate-600 sm:col-span-2">
                             App Secret

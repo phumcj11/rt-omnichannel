@@ -15,6 +15,7 @@ final class IntegrationConfigService extends BaseService
     private const FB_DB_KEYS = [
         'page_access_token' => 'fb_page_access_token',
         'app_secret' => 'fb_app_secret',
+        'app_id' => 'fb_app_id',
         'verify_token' => 'fb_verify_token',
         'page_id' => 'fb_page_id',
         'graph_version' => 'fb_graph_version',
@@ -61,6 +62,9 @@ final class IntegrationConfigService extends BaseService
         }
         if (($input['app_secret'] ?? '') !== '') {
             AppSetting::set('fb_app_secret', trim($input['app_secret']));
+        }
+        if (($input['app_id'] ?? '') !== '') {
+            AppSetting::set('fb_app_id', trim($input['app_id']));
         }
 
         $cfg = self::facebook();
@@ -154,7 +158,108 @@ final class IntegrationConfigService extends BaseService
         }
 
         $version = (string) ($cfg['graph_version'] ?? 'v21.0');
-        $url = 'https://graph.facebook.com/' . $version . '/me?fields=id,name&access_token=' . urlencode($token);
+        $targetPageId = trim($pageId ?? '') !== '' ? trim($pageId ?? '') : trim((string) ($cfg['page_id'] ?? ''));
+        $appId = trim((string) ($cfg['app_id'] ?? ''));
+        $secret = trim((string) ($cfg['app_secret'] ?? ''));
+
+        if ($appId !== '' && $secret !== '') {
+            $debug = self::testViaDebugToken($token, $appId, $secret, $version, $targetPageId);
+            if ($debug !== null) {
+                return $debug;
+            }
+        }
+
+        $me = self::graphGet('me?fields=id,name', $token, $version);
+        if ($me['ok']) {
+            return self::finalizePageTest($me, $targetPageId);
+        }
+
+        if ($targetPageId !== '') {
+            $page = self::graphGet($targetPageId . '?fields=id,name', $token, $version);
+            if ($page['ok']) {
+                return self::finalizePageTest($page, $targetPageId);
+            }
+
+            return ['ok' => false, 'error' => self::friendlyFacebookError($page['error'] ?? $me['error'] ?? 'Token ไม่ถูกต้อง')];
+        }
+
+        return ['ok' => false, 'error' => self::friendlyFacebookError($me['error'] ?? 'Token ไม่ถูกต้อง')];
+    }
+
+    /**
+     * @return array{ok: bool, page_name?: string, page_id?: string, error?: string}|null
+     */
+    private static function testViaDebugToken(
+        string $token,
+        string $appId,
+        string $secret,
+        string $version,
+        string $targetPageId
+    ): ?array {
+        $url = 'https://graph.facebook.com/' . $version . '/debug_token?input_token='
+            . urlencode($token) . '&access_token=' . urlencode($appId . '|' . $secret);
+        $raw = HttpClient::get($url);
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        /** @var array<string, mixed>|null $payload */
+        $payload = json_decode($raw, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+        if (isset($payload['error'])) {
+            $msg = is_array($payload['error']) ? (string) ($payload['error']['message'] ?? '') : '';
+
+            return ['ok' => false, 'error' => self::friendlyFacebookError($msg !== '' ? $msg : 'ตรวจ Token ไม่สำเร็จ')];
+        }
+
+        $info = $payload['data'] ?? null;
+        if (!is_array($info) || empty($info['is_valid'])) {
+            return [
+                'ok' => false,
+                'error' => 'Page Access Token ไม่ valid — สร้างใหม่ที่ Meta → Messenger → API Setup → Generate Token',
+            ];
+        }
+
+        $type = strtoupper((string) ($info['type'] ?? ''));
+        if ($type !== 'PAGE') {
+            return [
+                'ok' => false,
+                'error' => 'Token นี้ไม่ใช่ Page Access Token (ได้ type: ' . strtolower($type) . ') — ต้อง Generate จาก Messenger → API Setup ของ Page นี้เท่านั้น',
+            ];
+        }
+
+        $profileId = (string) ($info['profile_id'] ?? '');
+        if ($targetPageId !== '' && $profileId !== '' && $profileId !== $targetPageId) {
+            return [
+                'ok' => false,
+                'error' => 'Token เป็นของ Page ID ' . $profileId . ' ไม่ตรงกับที่ตั้งไว้ ' . $targetPageId,
+            ];
+        }
+
+        $pageName = '';
+        if ($profileId !== '') {
+            $nameCheck = self::graphGet($profileId . '?fields=name', $token, $version);
+            if ($nameCheck['ok']) {
+                $pageName = (string) ($nameCheck['page_name'] ?? '');
+            }
+        }
+
+        return [
+            'ok' => true,
+            'page_id' => $profileId !== '' ? $profileId : $targetPageId,
+            'page_name' => $pageName !== '' ? $pageName : 'Facebook Page',
+        ];
+    }
+
+    /**
+     * @return array{ok: bool, page_id?: string, page_name?: string, error?: string}
+     */
+    private static function graphGet(string $path, string $token, string $version): array
+    {
+        $url = 'https://graph.facebook.com/' . $version . '/' . ltrim($path, '/');
+        $url .= (str_contains($path, '?') ? '&' : '?') . 'access_token=' . urlencode($token);
         $raw = HttpClient::get($url);
         if ($raw === null || $raw === '') {
             $hint = HttpClient::lastError();
@@ -182,6 +287,42 @@ final class IntegrationConfigService extends BaseService
             'page_id' => (string) ($data['id'] ?? ''),
             'page_name' => (string) ($data['name'] ?? ''),
         ];
+    }
+
+    /**
+     * @param array{ok: bool, page_id?: string, page_name?: string, error?: string} $result
+     * @return array{ok: bool, page_name?: string, page_id?: string, error?: string}
+     */
+    private static function finalizePageTest(array $result, string $targetPageId): array
+    {
+        if (!$result['ok']) {
+            return $result;
+        }
+        $gotId = (string) ($result['page_id'] ?? '');
+        if ($targetPageId !== '' && $gotId !== '' && $gotId !== $targetPageId) {
+            return [
+                'ok' => false,
+                'error' => 'Token เป็นของ Page ID ' . $gotId . ' ไม่ตรงกับที่ตั้งไว้ ' . $targetPageId,
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'page_id' => $gotId !== '' ? $gotId : $targetPageId,
+            'page_name' => (string) ($result['page_name'] ?? ''),
+        ];
+    }
+
+    private static function friendlyFacebookError(string $msg): string
+    {
+        if ($msg === '') {
+            return 'Token ไม่ถูกต้อง';
+        }
+        if (str_contains($msg, 'pages_read_engagement') || str_contains($msg, '#100')) {
+            return 'Token ไม่ใช่ Page Access Token ของ Messenger หรือสิทธิ์ไม่พอ — ไป Meta → Use cases → Messenger → Customize → API Setup → Generate Token ของ Page นี้ (อย่าใช้ Token จาก Marketing API / Graph Explorer แบบ User Token)';
+        }
+
+        return $msg;
     }
 
     public static function webhookUrl(): string

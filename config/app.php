@@ -44,6 +44,7 @@ return array_merge([
         'verify_token' => getenv('FB_VERIFY_TOKEN') ?: '',
         'app_secret' => getenv('FB_APP_SECRET') ?: '',
         'page_id' => getenv('FB_PAGE_ID') ?: '',
+        'app_id' => getenv('FB_APP_ID') ?: '',
         'graph_version' => getenv('FB_GRAPH_VERSION') ?: 'v21.0',
         'default_branch_id' => (int) (getenv('FB_DEFAULT_BRANCH_ID') ?: 1),
     ],
