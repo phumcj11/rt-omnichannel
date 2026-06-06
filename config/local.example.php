@@ -12,8 +12,8 @@ return [
     /** ตั้งเป็น '' ถ้าใช้ Virtual Host ชี้ตรงที่โฟลเดอร์โปรเจกต์ */
     'base_path' => '/omnichannel',
     'env' => 'local',
-    /** development: true = เข้าเลยโดยไม่ล็อกอิน — production ต้อง false */
-    'allow_dev_auto_login' => true,
+    /** false = แสดงหน้า login ก่อน (แนะนำ) · true = ข้าม login ตอนพัฒนา */
+    'allow_dev_auto_login' => false,
     'database' => [
         'host' => '127.0.0.1',
         'port' => 3306,

@@ -17,8 +17,8 @@ Phase 1 — รันบน XAMPP (Windows)
    - ถ้าใช้ Virtual Host ชี้ตรงที่โฟลเดอร์โปรเจกต์: ตั้ง base_path เป็น '' ใน config/local.php
 
 5) บัญชีทดสอบ (หลัง import schema)
-   - admin@100bahtshop.local / Admin@100
-   - agent@100bahtshop.local / Admin@100
+   - admin@100bahtshop.local / admin123
+   - agent@100bahtshop.local / admin123
    (หน้า Login ยังไม่พร้อมใน Phase 1 — ใช้ทดสอบ DB เท่านั้น)
 
 6) mod_rewrite

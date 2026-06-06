@@ -504,10 +504,10 @@ INSERT INTO `channels` (`id`, `name`, `code`, `icon`, `is_active`, `config_json`
 (5, 'Web Chat', 'web_chat', 'globe', 1, NULL),
 (6, 'TikTok (Lead / Ads)', 'tiktok_lead', 'tiktok', 1, NULL);
 
--- Password ทั้งสองบัญชี (dev): Admin@100 — เปลี่ยนทันทีหลัง deploy
+-- Password (dev): admin123 — เปลี่ยนหลัง go-live
 INSERT INTO `users` (`id`, `branch_id`, `name`, `email`, `password_hash`, `role`, `is_active`) VALUES
-(1, 1, 'System Admin', 'admin@100bahtshop.local', '$2y$10$a2qaysNUg.gZ6fD1OiPWSuMVefWLcShZdnM/EzasQwDleXE5S1jGa', 'admin', 1),
-(2, 1, 'Sales Agent', 'agent@100bahtshop.local', '$2y$10$a2qaysNUg.gZ6fD1OiPWSuMVefWLcShZdnM/EzasQwDleXE5S1jGa', 'agent', 1);
+(1, 1, 'System Admin', 'admin@100bahtshop.local', '$2y$10$FDGyUq/0jxdZ7g5avPbbBOVUi9BlLON3Taz2.oZJwmQB4bWyeMrZC', 'admin', 1),
+(2, 1, 'Sales Agent', 'agent@100bahtshop.local', '$2y$10$FDGyUq/0jxdZ7g5avPbbBOVUi9BlLON3Taz2.oZJwmQB4bWyeMrZC', 'agent', 1);
 
 INSERT INTO `pipeline_stages` (`id`, `name`, `slug`, `sort_order`, `is_won`, `is_lost`) VALUES
 (1, 'New', 'new_inquiry', 10, 0, 0),

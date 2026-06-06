@@ -31,7 +31,8 @@ if (!Auth::check()) {
         echo json_encode(['ok' => false, 'error' => 'unauthorized'], JSON_UNESCAPED_UNICODE);
         exit;
     } else {
-        Redirect::to('/login?next=' . rawurlencode($path));
+        $loginUrl = ($path === '/' || $path === '') ? '/login' : '/login?next=' . rawurlencode($path);
+        Redirect::to($loginUrl);
     }
 }
 
