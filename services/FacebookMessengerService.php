@@ -94,16 +94,42 @@ final class FacebookMessengerService extends BaseService
             if (!is_array($entry)) {
                 continue;
             }
+            $pageId = (string) ($entry['id'] ?? '');
+
             $messaging = $entry['messaging'] ?? [];
-            if (!is_array($messaging)) {
+            if (is_array($messaging)) {
+                foreach ($messaging as $event) {
+                    if (!is_array($event)) {
+                        continue;
+                    }
+                    try {
+                        $this->processMessagingEvent($event, (int) $channel['id'], $pageId);
+                    } catch (Throwable $e) {
+                        $this->logError($channelId, $e->getMessage());
+                    }
+                }
+            }
+
+            // Page webhook — ฟิลด์ messages (รวมปุ่ม "Send to server" ใน Meta)
+            $changes = $entry['changes'] ?? [];
+            if (!is_array($changes)) {
                 continue;
             }
-            foreach ($messaging as $event) {
-                if (!is_array($event)) {
+            foreach ($changes as $change) {
+                if (!is_array($change) || (string) ($change['field'] ?? '') !== 'messages') {
                     continue;
                 }
+                $value = $change['value'] ?? null;
+                if (!is_array($value)) {
+                    continue;
+                }
+                $event = [
+                    'sender' => is_array($value['sender'] ?? null) ? $value['sender'] : [],
+                    'recipient' => is_array($value['recipient'] ?? null) ? $value['recipient'] : [],
+                    'timestamp' => $value['timestamp'] ?? (int) round(microtime(true) * 1000),
+                    'message' => is_array($value['message'] ?? null) ? $value['message'] : [],
+                ];
                 try {
-                    $pageId = (string) ($entry['id'] ?? '');
                     $this->processMessagingEvent($event, (int) $channel['id'], $pageId);
                 } catch (Throwable $e) {
                     $this->logError($channelId, $e->getMessage());
@@ -184,7 +210,8 @@ final class FacebookMessengerService extends BaseService
 
         $mid = (string) ($message['mid'] ?? '');
         if ($mid === '') {
-            return;
+            // Meta test webhook บางครั้งไม่มี mid
+            $mid = 'fb_' . hash('sha256', $psid . '|' . ($message['text'] ?? '') . '|' . (string) ($event['timestamp'] ?? ''));
         }
         if (WebhookDedup::isDuplicate(self::PROVIDER, $mid)) {
             return;
