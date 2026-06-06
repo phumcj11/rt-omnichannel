@@ -6,6 +6,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Helpers\Db;
 use App\Helpers\HttpClient;
 use App\Models\AppSetting;
 use App\Models\FacebookPage;
@@ -67,7 +68,7 @@ final class IntegrationConfigService extends BaseService
             AppSetting::set('fb_page_access_token', trim($input['page_access_token']));
         }
         if (($input['app_secret'] ?? '') !== '') {
-            AppSetting::set('fb_app_secret', trim($input['app_secret']));
+            AppSetting::set('fb_app_secret', self::normalizeSecret((string) $input['app_secret']));
         }
         if (($input['app_id'] ?? '') !== '') {
             AppSetting::set('fb_app_id', trim($input['app_id']));
@@ -341,6 +342,114 @@ final class IntegrationConfigService extends BaseService
         }
 
         return $base . '/webhooks/facebook.php';
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     */
+    public static function signatureHeaderFromServer(array $server): string
+    {
+        foreach (['HTTP_X_HUB_SIGNATURE_256', 'REDIRECT_HTTP_X_HUB_SIGNATURE_256'] as $key) {
+            if (!empty($server[$key])) {
+                return (string) $server[$key];
+            }
+        }
+        if (function_exists('getallheaders')) {
+            /** @var array<string, string>|false $headers */
+            $headers = getallheaders();
+            if (is_array($headers)) {
+                foreach ($headers as $name => $value) {
+                    if (strtolower((string) $name) === 'x-hub-signature-256') {
+                        return (string) $value;
+                    }
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * ตรวจ webhook ล่าสุดกับ App Secret ที่บันทึกอยู่ตอนนี้ (แยก log เก่ากับค่าปัจจุบัน)
+     *
+     * @return array{
+     *   has_log: bool,
+     *   log_id?: int,
+     *   created_at?: string,
+     *   stored_signature_ok?: bool,
+     *   has_signature_header?: bool,
+     *   current_secret_ok?: bool,
+     *   failure_reason?: string,
+     *   log_error?: string|null
+     * }
+     */
+    public static function analyzeLatestWebhookLog(): array
+    {
+        try {
+            $st = Db::pdo()->query(
+                "SELECT id, raw_body, headers_json, signature_ok, created_at, error_message
+                 FROM webhook_logs
+                 WHERE provider = 'facebook' AND raw_body <> ''
+                 ORDER BY id DESC
+                 LIMIT 1"
+            );
+            $row = $st->fetch(\PDO::FETCH_ASSOC);
+        } catch (\Throwable) {
+            return ['has_log' => false];
+        }
+
+        if ($row === false) {
+            return ['has_log' => false];
+        }
+
+        $secret = trim((string) (self::facebook()['app_secret'] ?? ''));
+        /** @var array<string, mixed> $headers */
+        $headers = json_decode((string) ($row['headers_json'] ?? '{}'), true);
+        if (!is_array($headers)) {
+            $headers = [];
+        }
+        $sigHeader = self::signatureHeaderFromServer($headers);
+        $rawBody = (string) ($row['raw_body'] ?? '');
+
+        $result = [
+            'has_log' => true,
+            'log_id' => (int) $row['id'],
+            'created_at' => (string) ($row['created_at'] ?? ''),
+            'stored_signature_ok' => !empty($row['signature_ok']),
+            'has_signature_header' => $sigHeader !== '',
+            'current_secret_ok' => false,
+            'failure_reason' => '',
+            'log_error' => $row['error_message'] ?? null,
+        ];
+
+        if ($secret === '') {
+            $result['failure_reason'] = 'no_secret';
+
+            return $result;
+        }
+        if ($sigHeader === '') {
+            $result['failure_reason'] = 'missing_header';
+
+            return $result;
+        }
+
+        $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+        $result['current_secret_ok'] = hash_equals($expected, $sigHeader);
+        if (!$result['current_secret_ok']) {
+            $result['failure_reason'] = 'signature_mismatch';
+        }
+
+        return $result;
+    }
+
+    private static function normalizeSecret(string $value): string
+    {
+        $value = trim($value);
+        if (str_starts_with($value, "\xEF\xBB\xBF")) {
+            $value = substr($value, 3);
+        }
+
+        return trim($value);
     }
 
     /**

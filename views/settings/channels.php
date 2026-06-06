@@ -16,6 +16,7 @@
  * @var string $activeVerifyToken
  * @var bool $verifyTokenInDb
  * @var list<array<string,mixed>> $webhookLogs
+ * @var array<string,mixed> $webhookAnalysis
  */
 declare(strict_types=1);
 
@@ -36,6 +37,7 @@ $isLocalhost = $isLocalhost ?? false;
 $activeVerifyToken = $activeVerifyToken ?? $verifyToken;
 $verifyTokenInDb = $verifyTokenInDb ?? false;
 $webhookLogs = $webhookLogs ?? [];
+$webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -240,15 +242,43 @@ $webhookLogs = $webhookLogs ?? [];
                     <p class="mt-2 text-sm text-amber-800"><strong>ยังไม่เคยได้รับ webhook จาก Facebook</strong> — Meta ยังไม่ส่ง event มาที่เซิร์ฟเวอร์ หรือ URL/Subscribe ยังไม่ครบ</p>
                 <?php else :
                     $latest = $webhookLogs[0];
-                    $sigOk = !empty($latest['signature_ok']);
+                    $storedSigOk = !empty($latest['signature_ok']);
+                    $currentSecretOk = !empty($webhookAnalysis['current_secret_ok']);
+                    $missingHeader = ($webhookAnalysis['failure_reason'] ?? '') === 'missing_header';
                     ?>
-                    <p class="mt-2 text-sm <?= $sigOk ? 'text-emerald-800' : 'text-red-800' ?>">
-                        <?php if ($sigOk) : ?>
-                            <i class="fa-solid fa-circle-check mr-1"></i> ได้รับ webhook ล่าสุด <?= htmlspecialchars((string) ($latest['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?> — ลายเซ็น OK
-                        <?php else : ?>
-                            <i class="fa-solid fa-circle-xmark mr-1"></i> ได้รับ webhook แต่ <strong>App Secret ไม่ตรง</strong> — วาง App Secret ใหม่จาก Meta → Basic แล้วบันทึก
+                    <?php if ($storedSigOk || $currentSecretOk) : ?>
+                        <p class="mt-2 text-sm text-emerald-800">
+                            <i class="fa-solid fa-circle-check mr-1"></i>
+                            <?php if ($storedSigOk) : ?>
+                                ได้รับ webhook ล่าสุด <?= htmlspecialchars((string) ($latest['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?> — ลายเซ็น OK
+                            <?php else : ?>
+                                App Secret ถูกต้องแล้ว — log แดงด้านล่างเป็นรายการเก่าก่อนแก้ไข
+                                (<?= htmlspecialchars((string) ($latest['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)
+                            <?php endif; ?>
+                        </p>
+                        <?php if (!$storedSigOk && $currentSecretOk) : ?>
+                            <p class="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                                ขั้นต่อไป: ไป Meta → Webhooks → ฟิลด์ <strong>messages</strong> → กด <strong>Send to server</strong> อีกครั้ง
+                                แล้ว refresh หน้านี้ — ควรขึ้นลายเซ็น OK
+                            </p>
                         <?php endif; ?>
-                    </p>
+                    <?php elseif ($missingHeader) : ?>
+                        <p class="mt-2 text-sm text-amber-900">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            ได้รับ webhook แต่เซิร์ฟเวอร์<strong>ไม่ได้รับ header X-Hub-Signature-256</strong>
+                            — ติดต่อ hosting ให้เปิด header นี้ (ModSecurity / proxy อาจ block)
+                        </p>
+                    <?php else : ?>
+                        <p class="mt-2 text-sm text-red-800">
+                            <i class="fa-solid fa-circle-xmark mr-1"></i>
+                            ได้รับ webhook ล่าสุด <?= htmlspecialchars((string) ($latest['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            แต่<strong>ลายเซ็นไม่ผ่าน</strong>
+                            — วาง App Secret ใหม่จาก Meta → Basic แล้วกดบันทึก + ตรวจ App ID/Secret
+                        </p>
+                        <?php if (!empty($latest['error_message'])) : ?>
+                            <p class="mt-1 text-xs text-red-700"><?= htmlspecialchars((string) $latest['error_message'], ENT_QUOTES, 'UTF-8') ?></p>
+                        <?php endif; ?>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
                     <li>Webhook URL ต้องเป็น <strong><?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></strong></li>

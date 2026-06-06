@@ -61,7 +61,6 @@ final class FacebookMessengerService extends BaseService
         $this->logWebhook($channelId, $rawBody, $server, $sigOk);
 
         if (!$sigOk) {
-            $this->logError($channelId, $this->signatureFailureReason($server));
             http_response_code(403);
             header('Content-Type: text/plain; charset=UTF-8');
             echo 'Invalid signature';
@@ -340,8 +339,8 @@ final class FacebookMessengerService extends BaseService
         if ($secret === '') {
             return 'ไม่มี App Secret — webhook ถูกปฏิเสธ (403)';
         }
-        if ($this->signatureHeader($server) === '') {
-            return 'ไม่พบ X-Hub-Signature-256 header';
+        if (IntegrationConfigService::signatureHeaderFromServer($server) === '') {
+            return 'ไม่พบ X-Hub-Signature-256 header — โฮสต์อาจ block header นี้';
         }
 
         return 'App Secret ไม่ตรงกับ Meta — คัดลอกใหม่จาก App settings → Basic แล้วบันทึก';
@@ -383,41 +382,18 @@ final class FacebookMessengerService extends BaseService
      */
     private function validateSignature(string $rawBody, array $server): bool
     {
-        $secret = (string) ($this->cfg['app_secret'] ?? '');
+        $secret = trim((string) ($this->cfg['app_secret'] ?? ''));
         if ($secret === '') {
             return !empty(self::app()['debug']);
         }
 
-        $header = $this->signatureHeader($server);
+        $header = IntegrationConfigService::signatureHeaderFromServer($server);
         if ($header === '' || !str_starts_with($header, 'sha256=')) {
             return false;
         }
         $expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
 
         return hash_equals($expected, $header);
-    }
-
-    /**
-     * @param array<string, mixed> $server
-     */
-    private function signatureHeader(array $server): string
-    {
-        if (!empty($server['HTTP_X_HUB_SIGNATURE_256'])) {
-            return (string) $server['HTTP_X_HUB_SIGNATURE_256'];
-        }
-        if (function_exists('getallheaders')) {
-            /** @var array<string, string>|false $headers */
-            $headers = getallheaders();
-            if (is_array($headers)) {
-                foreach ($headers as $name => $value) {
-                    if (strtolower((string) $name) === 'x-hub-signature-256') {
-                        return (string) $value;
-                    }
-                }
-            }
-        }
-
-        return '';
     }
 
     /**
@@ -433,9 +409,10 @@ final class FacebookMessengerService extends BaseService
                     $headers[$k] = $v;
                 }
             }
+            $failReason = $sigOk ? null : $this->signatureFailureReason($server);
             $st = $pdo->prepare(
-                'INSERT INTO webhook_logs (channel_id, provider, raw_body, headers_json, signature_ok, created_at)
-                 VALUES (:ch, :p, :body, :hdr, :sig, NOW())'
+                'INSERT INTO webhook_logs (channel_id, provider, raw_body, headers_json, signature_ok, error_message, created_at)
+                 VALUES (:ch, :p, :body, :hdr, :sig, :err, NOW())'
             );
             $st->execute([
                 'ch' => $channelId,
@@ -443,6 +420,7 @@ final class FacebookMessengerService extends BaseService
                 'body' => mb_substr($rawBody, 0, 65000),
                 'hdr' => json_encode($headers, JSON_UNESCAPED_UNICODE),
                 'sig' => $sigOk ? 1 : 0,
+                'err' => $failReason !== null ? mb_substr($failReason, 0, 500) : null,
             ]);
         } catch (Throwable) {
             // ไม่ให้ log ล้ม webhook
