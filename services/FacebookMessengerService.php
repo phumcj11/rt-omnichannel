@@ -58,7 +58,7 @@ final class FacebookMessengerService extends BaseService
         $channelId = $channel !== null ? (int) $channel['id'] : null;
 
         $sigOk = $this->validateSignature($rawBody, $server);
-        $this->logWebhook($channelId, $rawBody, $server, $sigOk);
+        $logId = $this->logWebhook($channelId, $rawBody, $server, $sigOk);
 
         if (!$sigOk) {
             http_response_code(403);
@@ -71,6 +71,7 @@ final class FacebookMessengerService extends BaseService
         $payload = json_decode($rawBody, true);
         $payload = $this->normalizeWebhookPayload(is_array($payload) ? $payload : null);
         if (!is_array($payload) || ($payload['object'] ?? '') !== 'page') {
+            $this->noteWebhookProcessing($logId, 0, 'payload ไม่ใช่ object=page');
             http_response_code(200);
             header('Content-Type: text/plain; charset=UTF-8');
             echo 'EVENT_RECEIVED';
@@ -78,6 +79,7 @@ final class FacebookMessengerService extends BaseService
         }
 
         if ($channel === null || empty($channel['is_active'])) {
+            $this->noteWebhookProcessing($logId, 0, 'ช่องทาง facebook_messenger ไม่ active');
             http_response_code(200);
             echo 'EVENT_RECEIVED';
             return;
@@ -85,16 +87,21 @@ final class FacebookMessengerService extends BaseService
 
         $entries = $payload['entry'] ?? [];
         if (!is_array($entries)) {
+            $this->noteWebhookProcessing($logId, 0, 'ไม่มี entry ใน payload');
             http_response_code(200);
             echo 'EVENT_RECEIVED';
             return;
         }
 
+        $processed = 0;
         foreach ($entries as $entry) {
             if (!is_array($entry)) {
                 continue;
             }
             $pageId = (string) ($entry['id'] ?? '');
+            if ($pageId === '' || $pageId === '0') {
+                $pageId = trim((string) ($this->cfg['page_id'] ?? ''));
+            }
 
             $messaging = $entry['messaging'] ?? [];
             if (is_array($messaging)) {
@@ -103,14 +110,15 @@ final class FacebookMessengerService extends BaseService
                         continue;
                     }
                     try {
-                        $this->processMessagingEvent($event, (int) $channel['id'], $pageId);
+                        if ($this->processMessagingEvent($event, (int) $channel['id'], $pageId)) {
+                            $processed++;
+                        }
                     } catch (Throwable $e) {
                         $this->logError($channelId, $e->getMessage());
                     }
                 }
             }
 
-            // Page webhook — ฟิลด์ messages (รวมปุ่ม "Send to server" ใน Meta)
             $changes = $entry['changes'] ?? [];
             if (!is_array($changes)) {
                 continue;
@@ -123,19 +131,25 @@ final class FacebookMessengerService extends BaseService
                 if (!is_array($value)) {
                     continue;
                 }
-                $event = [
-                    'sender' => is_array($value['sender'] ?? null) ? $value['sender'] : [],
-                    'recipient' => is_array($value['recipient'] ?? null) ? $value['recipient'] : [],
-                    'timestamp' => $value['timestamp'] ?? (int) round(microtime(true) * 1000),
-                    'message' => is_array($value['message'] ?? null) ? $value['message'] : [],
-                ];
+                $event = $this->eventFromChangeValue($value);
+                if ($event === null) {
+                    continue;
+                }
                 try {
-                    $this->processMessagingEvent($event, (int) $channel['id'], $pageId);
+                    if ($this->processMessagingEvent($event, (int) $channel['id'], $pageId)) {
+                        $processed++;
+                    }
                 } catch (Throwable $e) {
                     $this->logError($channelId, $e->getMessage());
                 }
             }
         }
+
+        $this->noteWebhookProcessing(
+            $logId,
+            $processed,
+            $processed > 0 ? 'บันทึกข้อความเข้า Inbox แล้ว' : 'ได้รับ webhook แต่ไม่มีข้อความใหม่ (อาจเป็น delivery/read หรือ Subscribe ยังไม่ครบ)'
+        );
 
         http_response_code(200);
         header('Content-Type: text/plain; charset=UTF-8');
@@ -197,29 +211,45 @@ final class FacebookMessengerService extends BaseService
     /**
      * @param array<string, mixed> $event
      */
-    private function processMessagingEvent(array $event, int $channelId, string $pageId = ''): void
+    private function processMessagingEvent(array $event, int $channelId, string $pageId = ''): bool
     {
+        if (!empty($event['delivery']) || !empty($event['read']) || !empty($event['postback'])) {
+            return false;
+        }
         if (!empty($event['message']['is_echo'])) {
-            return;
-        }
-
-        $message = $event['message'] ?? null;
-        if (!is_array($message)) {
-            return;
-        }
-
-        $mid = (string) ($message['mid'] ?? '');
-        if ($mid === '') {
-            // Meta test webhook บางครั้งไม่มี mid
-            $mid = 'fb_' . hash('sha256', $psid . '|' . ($message['text'] ?? '') . '|' . (string) ($event['timestamp'] ?? ''));
-        }
-        if (WebhookDedup::isDuplicate(self::PROVIDER, $mid)) {
-            return;
+            return false;
         }
 
         $psid = (string) ($event['sender']['id'] ?? '');
         if ($psid === '') {
-            return;
+            return false;
+        }
+
+        $pageId = trim($pageId);
+        if ($pageId !== '' && $pageId !== '0' && hash_equals($pageId, $psid)) {
+            return false;
+        }
+
+        $message = $event['message'] ?? null;
+        if (is_string($message)) {
+            $message = [
+                'mid' => 'fb_' . hash('sha256', 'str|' . $message . '|' . $psid),
+                'text' => $message,
+            ];
+        }
+        if (!is_array($message)) {
+            return false;
+        }
+        if (!empty($message['is_deleted'])) {
+            return false;
+        }
+
+        $mid = (string) ($message['mid'] ?? '');
+        if ($mid === '') {
+            $mid = 'fb_' . hash('sha256', $psid . '|' . ($message['text'] ?? '') . '|' . (string) ($event['timestamp'] ?? ''));
+        }
+        if (WebhookDedup::isDuplicate(self::PROVIDER, $mid)) {
+            return false;
         }
 
         $text = trim((string) ($message['text'] ?? ''));
@@ -228,8 +258,11 @@ final class FacebookMessengerService extends BaseService
             if (isset($message['attachments']) && is_array($message['attachments'])) {
                 $text = '[ไฟล์แนบจาก Facebook — ยังไม่รองรับแสดงผลเต็มรูปแบบ]';
                 $messageType = 'file';
+            } elseif (isset($message['sticker_id'])) {
+                $text = '[สติกเกอร์ Facebook]';
+                $messageType = 'text';
             } else {
-                return;
+                return false;
             }
         }
 
@@ -254,13 +287,55 @@ final class FacebookMessengerService extends BaseService
             $pageId !== '' ? $pageId : null
         );
 
-        Message::insertInbound(
+        $msgId = Message::insertInbound(
             $convId,
             $text,
             $mid,
             $messageType,
             ['facebook' => ['mid' => $mid, 'page_id' => $pageId, 'raw' => $message]]
         );
+
+        return $msgId !== null;
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     * @return array<string, mixed>|null
+     */
+    private function eventFromChangeValue(array $value): ?array
+    {
+        if (isset($value['delivery']) || isset($value['read']) || isset($value['postback'])) {
+            return null;
+        }
+
+        $sender = $value['sender'] ?? $value['from'] ?? null;
+        if (!is_array($sender)) {
+            return null;
+        }
+
+        $recipient = $value['recipient'] ?? $value['to'] ?? [];
+        if (is_array($recipient) && isset($recipient['data'][0]['id'])) {
+            $recipient = ['id' => (string) $recipient['data'][0]['id']];
+        } elseif (!is_array($recipient)) {
+            $recipient = [];
+        }
+
+        $message = $value['message'] ?? null;
+        if (is_string($message)) {
+            $message = [
+                'mid' => 'fb_' . hash('sha256', 'chg|' . $message . '|' . (string) ($sender['id'] ?? '')),
+                'text' => $message,
+            ];
+        } elseif (!is_array($message)) {
+            return null;
+        }
+
+        return [
+            'sender' => $sender,
+            'recipient' => $recipient,
+            'timestamp' => $value['timestamp'] ?? (int) round(microtime(true) * 1000),
+            'message' => $message,
+        ];
     }
 
     private function resolvePageToken(?string $pageId): string
@@ -393,7 +468,7 @@ final class FacebookMessengerService extends BaseService
     /**
      * @param array<string, mixed> $server
      */
-    private function logWebhook(?int $channelId, string $rawBody, array $server, bool $sigOk): void
+    private function logWebhook(?int $channelId, string $rawBody, array $server, bool $sigOk): ?int
     {
         try {
             $pdo = Db::pdo();
@@ -416,8 +491,30 @@ final class FacebookMessengerService extends BaseService
                 'sig' => $sigOk ? 1 : 0,
                 'err' => $failReason !== null ? mb_substr($failReason, 0, 500) : null,
             ]);
+
+            return (int) $pdo->lastInsertId();
         } catch (Throwable) {
-            // ไม่ให้ log ล้ม webhook
+            return null;
+        }
+    }
+
+    private function noteWebhookProcessing(?int $logId, int $processedCount, string $note): void
+    {
+        if ($logId === null || $logId <= 0) {
+            return;
+        }
+        try {
+            $pdo = Db::pdo();
+            $st = $pdo->prepare(
+                'UPDATE webhook_logs
+                 SET error_message = :msg, processed_at = NOW(), http_status = 200
+                 WHERE id = :id'
+            );
+            $st->execute([
+                'msg' => mb_substr($processedCount . ' msg — ' . $note, 0, 500),
+                'id' => $logId,
+            ]);
+        } catch (Throwable) {
         }
     }
 

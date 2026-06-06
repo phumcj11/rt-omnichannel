@@ -17,6 +17,7 @@
  * @var bool $verifyTokenInDb
  * @var list<array<string,mixed>> $webhookLogs
  * @var array<string,mixed> $webhookAnalysis
+ * @var array{conversations:int,inbound_messages:int} $fbInboxStats
  */
 declare(strict_types=1);
 
@@ -38,6 +39,7 @@ $activeVerifyToken = $activeVerifyToken ?? $verifyToken;
 $verifyTokenInDb = $verifyTokenInDb ?? false;
 $webhookLogs = $webhookLogs ?? [];
 $webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
+$fbInboxStats = $fbInboxStats ?? ['conversations' => 0, 'inbound_messages' => 0];
 ?>
 <section class="mx-auto max-w-4xl space-y-8" id="channel-settings">
     <div>
@@ -284,6 +286,23 @@ $webhookAnalysis = $webhookAnalysis ?? ['has_log' => false];
                             <p class="mt-1 text-xs text-red-700"><?= htmlspecialchars((string) $latest['error_message'], ENT_QUOTES, 'UTF-8') ?></p>
                         <?php endif; ?>
                     <?php endif; ?>
+                <?php endif; ?>
+                <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
+                    <i class="fa-brands fa-facebook-messenger mr-1 text-blue-600"></i>
+                    แชท Facebook ใน Inbox ตอนนี้:
+                    <strong><?= (int) ($fbInboxStats['conversations'] ?? 0) ?></strong> รายการ /
+                    <strong><?= (int) ($fbInboxStats['inbound_messages'] ?? 0) ?></strong> ข้อความเข้า
+                    <?php if ((int) ($fbInboxStats['conversations'] ?? 0) === 0) : ?>
+                        <span class="block mt-1 text-xs text-amber-900">
+                            ถ้า Meta Test ผ่านแต่ยัง 0 รายการ → กด <strong>Subscribe</strong> ฟิลด์ messages + เลือก Page
+                            แล้วทักจาก Messenger ส่วนตัว (App Development: ต้องเป็น Tester)
+                        </span>
+                    <?php endif; ?>
+                </p>
+                <?php if ($webhookLogs !== [] && !empty($webhookLogs[0]['error_message'])) : ?>
+                    <p class="mt-2 text-xs text-slate-600">
+                        Log ล่าสุด: <?= htmlspecialchars((string) $webhookLogs[0]['error_message'], ENT_QUOTES, 'UTF-8') ?>
+                    </p>
                 <?php endif; ?>
                 <ul class="mt-3 list-disc space-y-1 pl-5 text-xs text-slate-600">
                     <li>Webhook URL ต้องเป็น <strong><?= htmlspecialchars(str_replace('http://', 'https://', $webhookUrl), ENT_QUOTES, 'UTF-8') ?></strong></li>

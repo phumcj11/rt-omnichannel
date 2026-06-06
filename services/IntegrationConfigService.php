@@ -539,6 +539,33 @@ final class IntegrationConfigService extends BaseService
         return $result;
     }
 
+    /**
+     * @return array{conversations: int, inbound_messages: int}
+     */
+    public static function facebookInboxStats(): array
+    {
+        try {
+            $pdo = Db::pdo();
+            $conv = (int) $pdo->query(
+                "SELECT COUNT(*)
+                 FROM conversations c
+                 INNER JOIN channels ch ON ch.id = c.channel_id
+                 WHERE ch.code = 'facebook_messenger'"
+            )->fetchColumn();
+            $msgs = (int) $pdo->query(
+                "SELECT COUNT(*)
+                 FROM messages m
+                 INNER JOIN conversations c ON c.id = m.conversation_id
+                 INNER JOIN channels ch ON ch.id = c.channel_id
+                 WHERE ch.code = 'facebook_messenger' AND m.direction = 'inbound'"
+            )->fetchColumn();
+
+            return ['conversations' => $conv, 'inbound_messages' => $msgs];
+        } catch (\Throwable) {
+            return ['conversations' => 0, 'inbound_messages' => 0];
+        }
+    }
+
     private static function normalizeSecret(string $value): string
     {
         $value = trim($value);

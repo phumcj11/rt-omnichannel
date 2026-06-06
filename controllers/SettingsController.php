@@ -109,6 +109,7 @@ final class SettingsController
                 'verifyTokenInDb' => $verifyInDb !== null && trim($verifyInDb) !== '',
                 'webhookLogs' => $webhookLogs,
                 'webhookAnalysis' => $webhookAnalysis,
+                'fbInboxStats' => IntegrationConfigService::facebookInboxStats(),
             ],
         ]);
     }
